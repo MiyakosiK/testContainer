@@ -1,0 +1,25 @@
+version: 0.2
+
+phases:
+  pre_build:
+    commands:
+      # ECRにログイン
+      - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com
+      # ECRリポジトリが存在しない場合は作成
+      - aws ecr describe-repositories --repository-names $REPOSITORY_NAME || aws ecr create-repository --repository-name $REPOSITORY_NAME
+      - IMAGE_URI=$ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$REPOSITORY_NAME
+  build:
+    commands:
+      # Dockerイメージをビルド
+      - docker build -t $REPOSITORY_NAME .
+      - docker tag $REPOSITORY_NAME:latest $IMAGE_URI:latest
+  post_build:
+    commands:
+      # ECRにプッシュ
+      - docker push $IMAGE_URI:latest
+      # ECSデプロイ用のファイルを生成
+      - printf '[{"name":"%s","imageUri":"%s"}]' $CONTAINER_NAME $IMAGE_URI:latest > imagedefinitions.json
+
+artifacts:
+  files:
+    - imagedefinitions.json
