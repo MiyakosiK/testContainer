@@ -48,7 +48,7 @@ RUN dotnet publish "./BizKotei.csproj" -c $BUILD_CONFIGURATION -o /app/publish /
 
 FROM base AS final
 ENV TZ=Asia/Tokyo
-ENV ASPNETCORE_ENVIRONMENT=Development
+ENV ASPNETCORE_ENVIRONMENT=Staging
 WORKDIR /app
 COPY --from=publish /app/publish .
 ENTRYPOINT ["dotnet", "BizKotei.dll"]
