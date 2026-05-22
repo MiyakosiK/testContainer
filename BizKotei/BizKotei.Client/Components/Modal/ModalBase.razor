@@ -1,0 +1,33 @@
+﻿@using BizKotei.Client.Components
+
+<BizClientLib.Components.Overlay IsOpen=@IsOpen Close=@Close />
+<div class="-translate-y-1/2 -translate-x-1/2 shadow-[0_35px_60px_-15px_rgba(0,0,0,0.3)] fixed left-1/2 top-1/2 w-11/12 rounded-lg border-0 bg-[#F6F6F6] transition @((IsOpen? "opacity-100 z-[100]" : "opacity-0 -z-50"))">
+    @ChildContent
+</div>
+
+@code {
+    private bool prevIsOpen;
+
+    private bool shouldRender;
+
+    [Parameter, EditorRequired]
+    public RenderFragment? ChildContent { get; set; }
+
+    [Parameter, EditorRequired]
+    public bool IsOpen { get; set; }
+
+    [Parameter, EditorRequired]
+    public EventCallback<bool> Close { get; set; }
+
+    protected override void OnParametersSet()
+    {
+        // 前回値と異なる場合にのみレンダリングする
+        // ParameterにEventCallbackが存在するため、親Componentのレンダリングで毎回レンダリングされるのを防ぐため。
+        shouldRender = prevIsOpen != IsOpen;
+        prevIsOpen = IsOpen;
+    }
+
+    protected override bool ShouldRender() => shouldRender;
+
+}
+

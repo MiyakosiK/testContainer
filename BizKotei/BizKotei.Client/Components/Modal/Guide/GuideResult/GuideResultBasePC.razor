@@ -1,0 +1,157 @@
+﻿@typeparam TItem
+@using System.Reflection
+
+<div class="mt-6 w-full overflow-auto @($"{(ResultView == 0 ? "" :"w-fit")}")">
+    @switch (ResultView)
+    {
+        case -9:  // 初期状態
+        case -1:  // Loading
+            break;
+
+        case 0:
+            <NoDataResult ScreenSize=NoDataResult.ScreenType.Small />
+            break;
+
+        default:
+            <div class="@GetGridClass() grid w-full border border-zinc-500">
+                @if (!(HeaderPairs is null || HeaderPairs.Count == 0))
+                {
+                    @* ヘッダー *@
+                    int i = 0;
+                    @foreach (var header in HeaderPairs)
+                    {
+                        @if (i == 0)
+                        {
+                            @* 一番左の列 *@
+                            <div class="sticky top-0 border border-zinc-500 border-r-white bg-zinc-500 p-1 text-center text-white">@header.Value</div>
+                        }
+                        else if (i == HeaderPairs.Count - 1)
+                        {
+                            @* 一番右の列 *@
+                            <div class="sticky top-0 border border-zinc-500 border-l-white bg-zinc-500 p-1 text-center text-white">@header.Value</div>
+                        }
+                        else
+                        {
+                            @* 間の列 *@
+                            <div class="sticky top-0 border border-zinc-500 border-x-white bg-zinc-500 p-1 text-center text-white">@header.Value</div>
+                        }
+
+                        i++;
+                    }
+
+                    @* 明細 *@
+                    @if (Items is not null)
+                    {
+                        <div class="contents" @onmouseout="@(() => HoverEvent(""))">
+                            @foreach (var item in Items)
+                            {
+                                @* 一番左の列の値をホバー判定のキーにする *@
+                                string? hoverKey = "";
+                                if (propertyCache.TryGetValue(HeaderPairs.FirstOrDefault().Key, out var keyProperty))
+                                {
+                                    hoverKey = keyProperty.GetValue(item)!.ToString();
+                                }
+
+                                <div class="contents" @onmouseover="@(() => HoverEvent(hoverKey))">
+                                    @foreach (var header in HeaderPairs)
+                                    {
+                                        object? itemValue;
+                                        string? cellValue = string.Empty;
+                                        if (propertyCache.TryGetValue(header.Key, out var property))
+                                        {
+                                            itemValue = property.GetValue(item);
+                                            cellValue = itemValue is null ? "" : itemValue.ToString();
+                                        }
+                                        <GuideResultCellPC Value="@cellValue" Click="@(() => SetValue(item))" IsMouseOver="@(hoverRow == hoverKey)" />
+                                    }
+                                </div>
+                            }
+                        </div>
+                    }
+                }
+            </div>
+            break;
+    }
+</div>
+
+<WaitingForLoadingModal IsOpen="@isOpen" />
+
+@code {
+    [Parameter]
+    public int ResultView { get; set; }
+
+    [Parameter]
+    public Func<TItem, Task> SetValueRequested { get; set; } = default!;
+
+    /// <summary>
+    /// プロパティ名とそれに対応する列名のペア(Key:プロパティ名, Value:列名)
+    /// 現状5列まで対応。それ以上はGetGridClassを拡張する必要あり。
+    /// </summary>
+    [Parameter]
+    public Dictionary<string, string>? HeaderPairs { get; set; }
+
+    private string GetGridClass()
+    {
+        var columnCount = HeaderPairs is null ? 0 : HeaderPairs.Count();
+
+        return columnCount switch
+        {
+            // 1列目はキー項目と想定して最小限の列幅
+            1 => "grid-cols-[minmax(max-content,50px)]",
+            2 => "grid-cols-[minmax(max-content,50px)_repeat(1,minmax(max-content,1fr))]",
+            3 => "grid-cols-[minmax(max-content,50px)_repeat(2,minmax(max-content,1fr))]",
+            4 => "grid-cols-[minmax(max-content,50px_repeat(3,minmax(max-content,1fr))]",
+            5 => "grid-cols-[minmax(max-content,50px)_repeat(4,minmax(max-content,1fr))]",
+            _ => "grid-cols-[minmax(max-content,50px)]"
+        };
+    }
+
+    [Parameter]
+    public List<TItem>? Items { get; set; }
+
+    private bool isOpen;
+
+    // プロパティをキャッシュするDictionary
+    private Dictionary<string, PropertyInfo> propertyCache = new();
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (ResultView == -1)
+        {
+            isOpen = true;
+        }
+        else
+        {
+            isOpen = false;
+        }
+
+        // 列に対応するプロパティをキャッシュ
+        if (propertyCache.Count == 0 && HeaderPairs is not null)
+        {
+            foreach (var header in HeaderPairs)
+            {
+                var property = typeof(TItem).GetProperty(header.Key);
+                if (property is not null)
+                {
+                    propertyCache[header.Key] = property;
+                }
+            }
+        }
+
+        await base.OnParametersSetAsync();
+    }
+
+    // マウスオーバーした時の処理
+    private string? hoverRow;
+    private void HoverEvent(string? row)
+    {
+        hoverRow = row;
+    }
+
+    // 選択行の値を親コンポーネントに渡す
+    private async Task SetValue(TItem item)
+    {
+        await SetValueRequested.Invoke(item);
+
+    }
+}

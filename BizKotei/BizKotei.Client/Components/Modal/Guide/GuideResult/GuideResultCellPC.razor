@@ -1,0 +1,62 @@
+﻿@if (IsClickable)
+{
+    <div class="cursor-pointer border border-zinc-500 p-1 pr-4 text-blue-500 underline @GetMouseOverClass() @GetEllipsisClass()" @onclick="@(() => Click())">@Value</div>
+}
+else
+{
+    <div class="cursor-pointer border border-zinc-500 p-1 pr-4 text-black @GetMouseOverClass() @GetEllipsisClass()" @onclick="@(() => Click())">@Value</div>
+}
+
+@code {
+    [Parameter]
+    public string? Value { get; set; }
+
+    /// <summary>
+    /// 見た目をリンクっぽくするだけ
+    /// falseでもクリックイベントは返します
+    /// </summary>
+    [Parameter]
+    public bool IsClickable { get; set; }
+
+    [Parameter]
+    public Func<Task> Click { get; set; } = default!;
+
+    [Parameter]
+    public bool IsMouseOver { get; set; }
+
+    [Parameter]
+    public bool IsEllipsis { get; set; }
+
+
+    private bool? prevMouseOver = null;
+
+    // ホバー状態が変化した場合のみ再レンダリング
+    protected override bool ShouldRender() => IsMouseOver != prevMouseOver;
+
+    protected override void OnAfterRender(bool firstRender)
+    {
+        // Console.WriteLine(IsMouseOver);
+        base.OnAfterRender(firstRender);
+
+        prevMouseOver = IsMouseOver;
+    }
+    
+    private string GetMouseOverClass()
+    {
+        return IsMouseOver switch
+        {
+            true => "bg-blue-100",
+            false => "bg-white"
+        };
+    }
+
+    private string GetEllipsisClass()
+    {
+        return IsEllipsis switch
+        {
+            true => "overflow-hidden text-ellipsis whitespace-nowrap",
+            false => ""
+        };
+    }
+
+}

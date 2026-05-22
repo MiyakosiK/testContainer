@@ -1,0 +1,114 @@
+﻿@rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
+@using BizKotei.Client.Services
+@using BizShareLib.HttpComModels.DataConnectorComModel;
+@using BizClientLib.Services.Interfaces
+@using BizShareLib.HttpComModels.AnnouncementComModel
+@inject IAppRequest AppRequest
+@inject NavigationManager NavigationManager;
+@inject IConfiguration Configuration;
+
+<nav class="border-gray-200 bg-white">
+    <div class="w-full">
+        <ul class="flex flex-row border border-gray-100 font-normal">
+            <li class="mt-1 ml-1 h-8 w-48 min-w-48 items-center">
+                <img src="images/Biz_kotei.png" class="cursor-pointer object-scale-down" @onclick="NavigateToHome">
+            </li>
+            <li class="ml-12 flex w-full items-center truncate">
+                <div class="truncate">@kaisya</div>
+            </li>
+            @if (isAnnouncement)
+            {
+                <li class="mr-1 flex w-10 min-w-10 items-center justify-center">
+                    <div class="h-10 w-10">
+                        <Information isMobile="false" Body="@maintenanceBody" HeadLine="@maintenanceHeadline" Link="@maintenanceLink" />
+                    </div>
+                </li>
+            }
+            <li class="mr-1 flex w-10 min-w-10 items-center justify-center" @onclick="@(() => ToggleBalloon(BalloonType.Help))">
+                <Setting IsOpen="@isOpenHelp" />
+            </li>
+            <li class="mr-1 flex w-10 min-w-10 items-center justify-center" @onclick="@(() => ToggleBalloon(BalloonType.Account))">
+                <Help IsOpen="@isOpenAccount" />
+            </li>
+            <li class="mr-1 flex w-10 min-w-10 items-center justify-center">
+                <div class="h-10 w-10">
+                    <Account Kaisya="@kaisya" UserID="@userID" TenantID="@tenantID" />
+                </div>
+            </li>
+        </ul>
+    </div>
+</nav>
+
+@code {
+    private bool isOpenHelp;
+    private bool isOpenAccount;
+    private string kaisya = "";
+    private string userID = "";
+    private string tenantID = "";
+
+    private bool isAnnouncement = false;
+    private string? maintenanceBody = "";
+    private string? maintenanceHeadline = "";
+    private string? maintenanceLink = "";
+
+    private enum BalloonType
+    {
+        None,
+        Help,
+        Account
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Cookieにある接続情報を取得
+        var resDCForm = await AppRequest.Get<DataConnectForm>("api/DataConnector/get-cookie");
+        if (resDCForm is not null)
+        {
+            kaisya = resDCForm.Kaisya ?? "";
+            userID = resDCForm.UserID ?? "";
+            tenantID = resDCForm.TenantID ?? "";
+        }
+
+        // メンテナンス情報の取得
+        var queryObj = new { type = BizTypeEnum.BizKotei }; // Biz製品によって変国
+        var resAnnounce = await AppRequest.Get<AnnouncementResponse>("api/Announcement/get-announce", queryObj);
+        if (resAnnounce is not null)
+        {
+            maintenanceBody = resAnnounce.body;
+            maintenanceHeadline = resAnnounce.headline;
+            maintenanceLink = resAnnounce.link;
+
+            isAnnouncement = true;
+        }
+        else
+        {
+            isAnnouncement = false;
+        }
+    }
+
+    private void ToggleBalloon(BalloonType type)
+    {
+        switch (type)
+        {
+            case BalloonType.Help:
+                isOpenHelp = !isOpenHelp;
+                isOpenAccount = false;
+                break;
+
+            case BalloonType.Account:
+                isOpenAccount = !isOpenAccount;
+                isOpenHelp = false;
+                break;
+
+            default:
+                isOpenHelp = false;
+                isOpenAccount = false;
+                break;
+        }
+    }
+
+    private void NavigateToHome()
+    {
+        NavigationManager.NavigateTo("/");
+    }
+}

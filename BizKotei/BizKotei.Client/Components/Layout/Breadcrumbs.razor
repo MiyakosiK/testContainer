@@ -1,0 +1,40 @@
+﻿@inject NavigationManager NavigationManager
+@inject IJSRuntime JS
+@inject BizKotei.Client.Services.LayoutService layout
+@rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
+
+@if (layout.screenWidth == 0) { }
+else if (layout.IsMobile)
+{
+    <BreadcrumbsMobile />
+}
+else
+{
+    <div class="@(new Uri(NavigationManager.Uri).AbsolutePath == Shared.PathInfo.Path.Home ? "hidden":"block mb-2")">
+        @* PC版はルートパスで非表示 *@
+        <BreadcrumbsPC />
+    </div>
+}
+
+@code
+{
+    protected override void OnInitialized()
+    {
+        // BrowserのNavigationManagerの変更を検知する
+        NavigationManager.LocationChanged += LocationChanged;
+
+        layout.OnChange += StateHasChanged; // 画面サイズ取得後に再描画
+
+        base.OnInitialized();
+    }
+
+    private void LocationChanged(object? sender, LocationChangedEventArgs? e)
+    {
+        if (e is null)
+            return;
+
+        // ページ遷移時に表示を切り替える
+        StateHasChanged();
+    }
+
+}

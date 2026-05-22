@@ -1,0 +1,37 @@
+﻿
+<label class="p-1">@Name</label>
+<div class="grid grid-cols-[1fr_max-content_1fr]">
+    <InputFieldText WidthClass="w-full" @bind-InputValue="@ValueFrom" OnInput="@OnInputChangeFrom" IsMobileGuide="true" HeightClass="h-7" MaxLength="@MaxLength" />
+    <label class="w-10 text-center">～</label>
+    <InputFieldText WidthClass="w-full" @bind-InputValue="@ValueTo" OnInput="@OnInputChangeTo" IsMobileGuide="true" HeightClass="h-7" MaxLength="@MaxLength" />
+</div>
+
+
+@code {
+    [Parameter, EditorRequired]
+    public string? Name { get; set; }
+
+    [Parameter]
+    public string? ValueFrom { get; set; }
+
+    [Parameter]
+    public string? ValueTo { get; set; }
+
+    [Parameter]
+    public int? MaxLength{ get; set; }
+
+    [Parameter]
+    public EventCallback<string> ValueFromChanged { get; set; }
+    [Parameter]
+    public EventCallback<string> ValueToChanged { get; set; }
+
+    private async Task OnInputChangeFrom(ChangeEventArgs e)
+    {
+        await ValueFromChanged.InvokeAsync(ValueFrom);
+    }
+
+    private async Task OnInputChangeTo(ChangeEventArgs e)
+    {
+        await ValueToChanged.InvokeAsync(ValueTo);
+    }
+}

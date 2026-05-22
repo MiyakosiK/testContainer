@@ -1,0 +1,24 @@
+﻿@inject BizKotei.Client.Services.LayoutService layout
+@rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
+
+@if (layout.screenWidth == 0) { }
+else if (layout.IsMobile)
+{
+    @* スマホ版は枠を出さない *@
+    <div class="h-0 w-0" />
+}
+else
+{
+    @* サイズは親のgridで指定 *@
+    <div class="h-2 w-2" />
+}
+
+@code
+{
+    protected override void OnInitialized()
+    {
+        layout.OnChange += StateHasChanged; // 画面サイズ取得後に再描画
+        base.OnInitialized();
+    }
+
+}

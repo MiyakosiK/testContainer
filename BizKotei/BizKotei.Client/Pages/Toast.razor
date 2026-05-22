@@ -1,0 +1,43 @@
+﻿<div class="fixed right-5 top-12 z-50 space-y-2">
+    @if (IsVisible)
+    {
+        <div class="toast-message max-w-sm rounded-lg p-4 @ToastStyle shadow-lg" role="alert">
+            <span class="font-medium">@Message</span>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public string Message { get; set; } = string.Empty;
+    [Parameter] public string ToastStyle { get; set; } = "bg-stone-600 text-white";
+    private bool IsVisible { get; set; } = false;
+
+    public async Task ShowToast(string message, string style = "bg-stone-600 text-white", int duration = 3000)
+    {
+        Message = message;
+        ToastStyle = style;
+        IsVisible = true;
+        StateHasChanged();
+
+        await Task.Delay(duration);
+        IsVisible = false;
+        StateHasChanged();
+    }
+
+    // keepがtrue→falseになるまでトーストを表示し続ける
+    public void KeepShowToast(string message, bool keep, string style = "bg-stone-600 text-white")
+    {
+        Message = message;
+        ToastStyle = style;
+
+        if (keep)
+        {
+            IsVisible = true;
+        }
+        else
+        {
+           IsVisible = false; 
+        }
+        StateHasChanged();
+    }
+}

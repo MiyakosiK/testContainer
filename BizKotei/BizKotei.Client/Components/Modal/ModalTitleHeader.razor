@@ -1,0 +1,15 @@
+﻿<div class="relative flex h-10 w-full items-center justify-center bg-blue-900 p-1">
+    <label class="text-xl text-white">@Title</label>
+    <button type="button" class="absolute right-0 top-0 flex h-10 w-10 items-center justify-center" onclick=@Close>
+        <div class="absolute h-9 w-0.5 origin-center rotate-45 transform bg-white"></div>
+        <div class="-rotate-45 absolute h-9 w-0.5 origin-center transform bg-white"></div>
+    </button>
+</div>
+
+@code {
+    [Parameter]
+    public string? Title { get; set; }
+
+    [Parameter, EditorRequired]
+    public EventCallback<bool> Close { get; set; }
+}

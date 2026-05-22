@@ -1,0 +1,22 @@
+﻿<ModalBaseNoBackGround IsOpen=@IsOpen IsBackColorTransparent="true" IsAnimation="true">
+    @* 無色透明のオーバーレイのためHTML、CSSは設定していない *@
+</ModalBaseNoBackGround>
+
+@code {
+    private bool prevIsOpen;
+    private bool shouldRender;
+
+    [Parameter, EditorRequired]
+    public bool IsOpen { get; set; }
+
+    protected override void OnParametersSet()
+    {
+        // 前回値と異なる場合にのみレンダリングする
+        // ParameterにEventCallbackが存在するため、親Componentのレンダリングで毎回レンダリングされるのを防ぐため。
+        shouldRender = prevIsOpen != IsOpen;
+        prevIsOpen = IsOpen;
+
+    }
+
+    protected override bool ShouldRender() => shouldRender;
+}

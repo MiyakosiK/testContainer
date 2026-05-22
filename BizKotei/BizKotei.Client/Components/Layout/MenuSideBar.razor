@@ -1,0 +1,126 @@
+﻿@using BizKotei.Client.Shared
+@using BizClientLib.Services.Interfaces
+@using BizShareLib.HttpComModels.DataConnectorComModel;
+@inject IAppRequest AppRequest
+@inject IJSRuntime JS
+@inject NavigationManager NavigationManager
+@inject BizKotei.Client.Services.LayoutService layout
+@rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
+
+@if (!layout.IsMobile)
+{
+	<nav class="h-full @(isSpread ? "w-52" : "w-12") border-blue-100 bg-indigo-950 transition-[width]">
+		<div class="h-full w-full">
+			<ul class="flex flex-col border-none font-normal">
+				<li>
+					<button type="button" class="flex h-10 w-12 flex-col items-center justify-center" @onclick="@(() => isSpread = !isSpread)">
+						<img src="/images/biznipo_arrow.png" class="@(isSpread ? "rotate-90" : "-rotate-90") h-6 w-6 transform object-cover brightness-200 grayscale invert">
+					</button>
+				</li>
+				@if (tenantID is not null) @* 接続情報読込前は何も表示しない *@
+				{
+					<li class="mt-1">
+						<a href=@PathInfo.Path.Home data-test-id="home-link-pc">
+							<div class="mx-2 my-2 flex items-center rounded-md p-1 text-xl @(IsSelectedMenu(MenuType.Home) ? "bg-blue-50 text-black":"text-white hover:bg-white/30")">
+								<img src="@(IsSelectedMenu(MenuType.Home) ? "images/home_black.png":"images/home_white.png")" class="h-6 w-6" />
+								<div class="ml-2 translate-y-0.5 transform overflow-hidden tracking-widest whitespace-nowrap">ホーム</div>
+							</div>
+						</a>
+					</li>
+					@* <li>
+						<a href=@PathInfo.Path.InputOrder data-test-id="input-order-link-pc">
+							<div class="mx-2 my-2 flex items-center rounded-md p-1 text-xl @(IsSelectedMenu(MenuType.InputOrder) ? "bg-blue-50 text-black":"text-white hover:bg-white/30")">
+								<img src="@(IsSelectedMenu(MenuType.Input) ? "images/order_black.png":"images/order_white.png")" class="h-6 w-6" />
+								<div class="ml-2 translate-y-0.5 transform overflow-hidden tracking-widest whitespace-nowrap">～～入力</div>
+							</div>
+						</a>
+					</li> *@
+					@* <li>
+						<a href=@PathInfo.Path.ListOrder data-test-id="list-order-link-pc">
+							<div class="mx-2 my-2 flex items-center rounded-md p-1 text-xl @(IsSelectedMenu(MenuType.ListOrder) ? "bg-blue-50 text-black":"text-white hover:bg-white/30")">
+								<img src="@(IsSelectedMenu(MenuType.List) ? "images/listorder_black.png":"images/listorder_white.png")" class="h-6 w-6" />
+								<div class="ml-2 translate-y-0.5 transform overflow-hidden tracking-widest whitespace-nowrap">～～一覧</div>
+							</div>
+						</a>
+					</li> *@
+				}
+			</ul>
+		</div>
+	</nav>
+}
+
+@code {
+	// メニューバーを広げるか狭くするか
+	private bool isSpread = true;
+
+	// テナントID
+	private string? tenantID = null;
+
+	private enum MenuType
+	{
+		Home,
+		Input,
+		List,
+	}
+
+	private bool IsSelectedMenu(MenuType checkType)
+	{
+		MenuType selectedType = MenuType.Home;
+
+		// switch (NavigationManager.Uri)
+		// {
+		// 	case var s when s.Contains(PathInfo.Path.Input):
+		// 		selectedType = MenuType.Input;
+		// 		break;
+		// 	case var s when s.Contains(PathInfo.Path.List):
+		// 		selectedType = MenuType.List;
+		// 		break;
+		// 	default:
+		// 		selectedType = MenuType.Home;
+		// 		break;
+		// }
+
+		if (selectedType == checkType)
+		{
+			return true;
+		}
+		else
+		{
+			return false;
+		}
+	}
+
+	protected override async Task OnInitializedAsync()
+	{
+		// BrowserのNavigationManagerの変更を検知する
+		NavigationManager.LocationChanged += LocationChanged;
+
+		isSpread = layout.IsMenuSpreadDefault;
+
+		layout.OnChange += OnChangeLayout; // 画面サイズ取得後に再描画
+
+		// Cookieにある接続情報を取得
+		var resDCForm = await AppRequest.Get<DataConnectForm>("api/DataConnector/get-cookie");
+		if (resDCForm is not null)
+		{
+			tenantID = resDCForm.TenantID ?? "";
+		}
+
+		base.OnInitialized();
+	}
+
+	private void OnChangeLayout()
+	{
+		isSpread = layout.IsMenuSpreadDefault;
+		StateHasChanged();
+	}
+
+	private void LocationChanged(object? sender, LocationChangedEventArgs? e)
+	{
+		if (e is null)
+			return;
+
+		// ページ遷移時に表示を切り替える
+		StateHasChanged();
+	}
+}

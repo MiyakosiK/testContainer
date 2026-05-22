@@ -1,0 +1,67 @@
+﻿@using BizShareLib.HttpComModels.DataConnectorComModel;
+@using BizKotei.Client.Services
+@using System.Security.Claims
+@using BizClientLib.Services.Interfaces
+@using BizClientLib.Shared
+@using BizShareLib.Shared
+@inject IAppRequest AppRequest
+@inject IJSRuntime JSRuntime
+@inject ILogger<Account> Logger
+@inject NavigationManager navigation
+@rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
+
+<div class="p-2">
+    <button @onclick="ToggleIsOpen">
+        <img src="/images/info.png" class="h-6 w-6">
+    </button>
+
+    <div @onclick="() => isOpen = false" class="@(isOpen? "block z-[90]":"hidden") bg-transparent fixed top-0 left-0 w-full h-screen" />
+
+    <div class="absolute right-2 overflow-x-auto border border-black bg-white p-3 text-sm @(isOpen? "block z-[100]":"hidden") drop-shadow-xl @(isMobile ? "max-w-[calc(100vw-16px)]" : "max-w-96")">
+        <div class="grid grid-cols-1 gap-y-2">
+            <div class="flex flex-row">
+                <div class="font-bold">@HeadLine</div>
+            </div>
+
+            @if (Body is not null)
+            {
+                @((MarkupString)Body)
+            }
+            @if (Link is not null)
+            {
+                <div class="mt-2 text-right text-blue-500 underline">
+                    <a href=@Link target="_blank" class="cursor-pointer">詳細はこちら</a>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    private bool isOpen = false;
+
+    [Parameter]
+    public string? Body { get; set; }
+
+    [Parameter]
+    public string? HeadLine { get; set; }
+
+    [Parameter]
+    public string? Link { get; set; }
+
+    [Parameter]
+    public bool isMobile { get; set; }
+
+    private void ToggleIsOpen() => isOpen = !isOpen;
+
+    private async Task MoveToDataConnector()
+    {
+        var result = await AppRequest.Get<string>("api/DataConnector/disconnect");
+        if (result is null)
+            return;
+
+        // 画面離脱防止のJavaScriptを無効化
+        await JSRuntime.InvokeVoidAsync("removeEvent");
+        navigation.NavigateTo(CommonPathInfo.Path.DataConnector);
+    }
+}

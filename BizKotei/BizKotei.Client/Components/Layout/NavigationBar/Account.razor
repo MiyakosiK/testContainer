@@ -1,0 +1,83 @@
+﻿@using BizShareLib.HttpComModels.DataConnectorComModel;
+@using BizKotei.Client.Services
+@using System.Security.Claims
+@using BizClientLib.Services.Interfaces
+@using BizClientLib.Shared
+@using BizShareLib.Shared
+@inject IAppRequest AppRequest
+@inject IJSRuntime JSRuntime
+@inject ILogger<Account> Logger
+@inject NavigationManager navigation
+@rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
+
+<div class="p-2">
+    <button @onclick="ToggleIsOpen" data-test-id="toggle">
+        <img src="/images/user.png" class="h-6 w-6">
+    </button>
+
+    <div @onclick="() => isOpen = false" class="@(isOpen? "block z-[90]":"hidden") bg-transparent fixed top-0 left-0 w-full h-screen" data-test-id="overlay" />
+
+    <div class="absolute right-2 overflow-x-auto border border-black bg-white p-3 text-sm drop-shadow-xl @(isOpen? "block z-[100]":"hidden")" data-test-id="container">
+        <div class="grid grid-cols-1 gap-y-2">
+            <div class="flex flex-row">
+                <div class="font-bold">アカウント情報</div>
+                <div class="right-0.5">（@TenantID）</div>
+            </div>
+            <div data-test-id="company">@Kaisya</div>
+            <div class="whitespace-nowrap">email : <label data-test-id="email">@authEmail</label></div>
+            <div class="whitespace-nowrap">ユーザーID : <label data-test-id="user-id">@UserID</label></div>
+            @* <div class="whitespace-nowrap">企業コード : <label data-test-id="corp-id">@CorpID</label></div> *@
+            <div class="mt-5 flex flex-row-reverse">
+                <button @onclick=@MoveToDataConnector class="border-none text-nowrap text-blue-500 underline" data-test-id="nav-data-connector">会社データ選択</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private bool isOpen = false;
+
+    private string authEmail = "";
+
+    [CascadingParameter]
+    private Task<AuthenticationState>? authenticationState { get; set; }
+
+    [Parameter]
+    public string? Kaisya { get; set; }
+
+    [Parameter]
+    public string? UserID { get; set; }
+
+    // [Parameter]
+    // public string? CorpID { get; set; }
+
+    [Parameter]
+    public string? TenantID { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (authenticationState is not null)
+        {
+            var authState = await authenticationState;
+            var user = authState?.User;
+
+            if (user?.Identity is not null)
+            {
+                authEmail = user.FindFirst(ClaimTypes.Email)?.Value ?? "";
+            }
+        }
+    }
+
+    private void ToggleIsOpen() => isOpen = !isOpen;
+
+    private async Task MoveToDataConnector()
+    {
+        var result = await AppRequest.Get<string>("api/DataConnector/disconnect");
+        if (result is null)
+            return;
+
+        // 画面離脱防止のJavaScriptを無効化
+        await JSRuntime.InvokeVoidAsync("removeEvent");
+        navigation.NavigateTo(CommonPathInfo.Path.DataConnector);
+    }
+}

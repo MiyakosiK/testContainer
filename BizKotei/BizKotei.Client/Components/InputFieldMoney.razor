@@ -1,0 +1,192 @@
+﻿@inject IJSRuntime JSRuntime
+
+<InputFieldBase Type="InputFieldBase.InputType.Text"
+@bind-InputValue="@moneyString"
+IsInvalid="@IsInvalid"
+IsDisabled="@IsDisabled"
+IsMobileGuide="@IsMobileGuide"
+Placeholder="@Placeholder"
+HeightClass="@GetHeightClass()"
+WidthClass="@GetWidthClass()"
+MaxLength="@maxLength"
+IsNoTabFocus="@IsNoTabFocus"
+IsTextRight="true"
+@onfocusin="@OnFocusInHandler"
+@onfocusout="@OnFocusOutHandler"
+@onkeydown="@OnKeyDownHandler"
+@oninput="@OnInputHandler" />
+
+@code {
+    private const decimal MaxMoney = 99999999999;
+
+    private int maxLength = 11;
+
+    /// <summary>
+    /// 金額のdecimal数値
+    /// バインドしたい場合はパラメータを渡すのではなく「@bind-InputValue="@hoge"」としてください
+    /// </summary>
+    [Parameter]
+    public decimal? InputValue { get; set; }
+
+    /// <summary>
+    /// バリデーションエラー等の場合true
+    /// 枠や背景を赤にします
+    /// </summary>
+    [Parameter]
+    public bool IsInvalid { get; set; }
+
+    /// <summary>
+    /// 入力不可の場合true
+    /// 枠や背景をグレーにします
+    /// </summary>
+    [Parameter]
+    public bool IsDisabled { get; set; }
+
+    /// <summary>
+    /// スマホ版のガイドでtrueにする
+    /// フォーカスアウト時の背景を薄い青にする
+    /// </summary>
+    [Parameter]
+    public bool IsMobileGuide { get; set; }
+
+    /// <summary>
+    /// 高さ関係のclassをオーバーライドします
+    /// 指定しなければデフォルト値
+    /// </summary>
+    [Parameter]
+    public string? HeightClass { get; set; }
+
+    /// <summary>
+    /// 幅関係のclassをオーバーライドします
+    /// 指定しなければデフォルト値
+    /// </summary>
+    [Parameter]
+    public string? WidthClass { get; set; }
+
+    [Parameter]
+    public string? Placeholder { get; set; }
+
+    /// <summary>
+    /// trueならタブキーでのフォーカス遷移をしない
+    /// </summary>
+    [Parameter]
+    public bool IsNoTabFocus { get; set; }
+
+    [Parameter]
+    public EventCallback<decimal?> InputValueChanged { get; set; }
+
+    [Parameter]
+    public EventCallback AfterInputValueChange { get; set; }
+
+    protected override void OnParametersSet()
+    {
+        moneyString = InputValue is null ? null : ClientUtilities.KingakuCommaSeparate(InputValue.ToString());
+    }
+
+    private string GetHeightClass()
+    {
+        // デフォルト値はPC版ガイドの検索条件と同じ
+        return HeightClass.IsNullOrEmpty() ? "h-6" : HeightClass;
+    }
+
+    private string GetWidthClass()
+    {
+        // デフォルト値はPC版ガイドの検索条件と同じ
+        return WidthClass.IsNullOrEmpty() ? "w-96" : WidthClass;
+    }
+
+
+    #region 金額入力の制御系
+    // 金額をカンマ区切りにした文字列
+    private string? moneyString;
+
+    //金額の文字列を数値に変換して格納する
+    private void MoneyStringToNumeric()
+    {
+        if (moneyString is null)
+        {
+            InputValue = null;
+            return;
+        }
+
+        // 全角数字を半角に変換する
+        moneyString = moneyString.Replace('０', '0').Replace('１', '1').Replace('２', '2').Replace('３', '3').Replace('４', '4')
+                                 .Replace('５', '5').Replace('６', '6').Replace('７', '7').Replace('８', '8').Replace('９', '9');
+
+        if (decimal.TryParse(moneyString, out var decimalMoney) && decimal.Abs(decimalMoney) <= MaxMoney)
+        {
+            // decimalに変換できる入力の場合は変換して、longを通して小数点以下を切り捨てる
+            var int64Money = decimal.ToInt64(decimalMoney);
+
+            InputValue = (decimal)int64Money;
+        }
+        else
+        {
+            // decimalに変換できない文字列や12桁以上の場合はクリアする
+            InputValue = null;
+            moneyString = null;
+        }
+
+    }
+
+    /// <summary>
+    /// フォーカスインしたとき、カンマを外す
+    /// </summary>
+    private void OnFocusInHandler()
+    {
+        moneyString = moneyString is null ? null : moneyString.Replace(",", string.Empty);
+    }
+
+    /// <summary>
+    /// フォーカスアウトしたとき、親コンポーネントに金額を反映し、カンマ区切りに変換する
+    /// </summary>
+    private void OnFocusOutHandler()
+    {
+        MoneyStringToNumeric();
+        InputValueChanged.InvokeAsync(InputValue);  // 金額値の変更を親コンポーネントに通知
+        AfterInputValueChange.InvokeAsync();
+    }
+
+    // マイナス符号が入力された時はMaxLengthを動的に12に変更
+    private void OnKeyDownHandler(KeyboardEventArgs e)
+    {
+        if (e.Key == "-")
+        {
+            maxLength = 12;
+        }
+        else if (moneyString is not null && moneyString.Contains("-"))
+        {
+            maxLength = 12;
+        }
+        else
+        {
+            maxLength = 11;
+        }
+    }
+
+    // OnKeyDownHandlerだけでは不整合になる可能性があるのでoninputでも制御を行う
+    private void OnInputHandler(ChangeEventArgs e)
+    {
+        string newInput = e?.Value?.ToString() ?? string.Empty;
+
+        // マイナス符号がある場合（最大12桁まで）
+        if (newInput.StartsWith("-"))
+        {
+            if (newInput.Length > 12)
+            {
+                newInput = newInput.Substring(0, 12);
+            }
+        }
+        else
+        {
+            // プラス金額の場合、最大11桁まで
+            if (newInput.Length > 11)
+            {
+                newInput = newInput.Substring(0, 11);
+            }
+        }
+        moneyString = newInput;
+    }
+
+    #endregion
+}

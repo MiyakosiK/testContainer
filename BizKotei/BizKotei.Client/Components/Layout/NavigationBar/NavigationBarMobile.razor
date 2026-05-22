@@ -1,0 +1,69 @@
+﻿@rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
+@using BizKotei.Client.Services
+@using BizShareLib.HttpComModels.DataConnectorComModel;
+@using BizClientLib.Services.Interfaces
+@using BizShareLib.HttpComModels.AnnouncementComModel
+@inject IAppRequest AppRequest
+
+<nav class="h-10 border-gray-200 bg-white">
+    <div class="w-screen">
+        <ul class="flex border border-gray-100 font-normal">
+            <li>
+                <Menu />
+            </li>
+            <li class="mb-1.5 ml-1 flex w-full items-center justify-center truncate">
+                <div class="truncate">@kaisya</div>
+            </li>
+            @if (isAnnouncement)
+            {
+                <li class="mr-0.5 flex w-10 min-w-10 items-center justify-center">
+                    <div>
+                        <Information isMobile="true" Body="@maintenanceBody" HeadLine="@maintenanceHeadline" Link="@maintenanceLink" />
+                    </div>
+                </li>
+            }
+            <li class="mr-0.5 flex w-10 min-w-10 items-center justify-center">
+                <Account Kaisya="@kaisya" UserID="@userID" TenantID="@tenantID" />
+            </li>
+        </ul>
+    </div>
+</nav>
+
+@code {
+    private string kaisya = "";
+    private string userID = "";
+    private string tenantID = "";
+
+    private bool isAnnouncement = false;
+    private string? maintenanceBody = "";
+    private string? maintenanceHeadline = "";
+    private string? maintenanceLink = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Cookieにある接続情報を取得
+        var resDCForm = await AppRequest.Get<DataConnectForm>("api/DataConnector/get-cookie");
+        if (resDCForm is not null)
+        {
+            kaisya = resDCForm.Kaisya ?? "";
+            userID = resDCForm.UserID ?? "";
+            tenantID = resDCForm.TenantID ?? "";
+        }
+
+        // メンテナンス情報の取得
+        var queryObj = new { type = 4 };
+        var resAnnounce = await AppRequest.Get<AnnouncementResponse>("api/Announcement/get-announce", queryObj);
+        if (resAnnounce is not null)
+        {
+            maintenanceBody = resAnnounce.body;
+            maintenanceHeadline = resAnnounce.headline;
+            maintenanceLink = resAnnounce.link;
+
+            isAnnouncement = true;
+        }
+        else
+        {
+            isAnnouncement = false;
+        }
+    }
+}

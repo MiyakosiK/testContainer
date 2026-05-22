@@ -1,0 +1,30 @@
+﻿@using BizClientLib.Services.Interfaces
+@using BizClientLib.Components.Modal
+@using BizKotei.Client.Services
+@attribute [Route(Shared.PathInfo.Path.Home)]
+@inject BizKotei.Client.Services.LayoutService layout
+@inject IAppRequest AppRequest
+@inherits DetectOtherTab
+@rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
+
+@if (layout.screenWidth == 0) { }
+else if (layout.IsMobile)
+{
+    <HomeMobile />
+}
+else
+{
+    <HomePC />
+}
+
+<MessageBox @ref="messageBox" />
+
+@code
+{
+    protected override void OnInitialized()
+    {
+        layout.OnChange += StateHasChanged; // 画面サイズ取得後に再描画
+        base.OnInitialized();
+    }
+
+}

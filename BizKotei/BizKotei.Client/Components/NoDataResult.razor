@@ -1,0 +1,23 @@
+﻿@if (ScreenSize == ScreenType.Normal)
+{
+    <div class="m-auto mt-20 flex h-28 w-80 items-center justify-center rounded-lg border border-blue-200 bg-blue-50">
+        表示するデータがありません。
+    </div>
+}
+else
+{
+    <div class="m-auto flex h-28 w-80 items-center justify-center rounded-lg border border-blue-200 bg-blue-50">
+        表示するデータがありません。
+    </div>
+}
+
+@code {
+    [Parameter]
+    public ScreenType ScreenSize { get; set; }
+
+    public enum ScreenType
+    {
+        Normal,
+        Small
+    }
+}

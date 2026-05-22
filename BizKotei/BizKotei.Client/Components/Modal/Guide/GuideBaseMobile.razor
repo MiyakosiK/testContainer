@@ -1,0 +1,199 @@
+﻿@* @inject IJSRuntime JSRuntime *@
+
+@* ガイド部分以外をタップすると閉じる *@
+<div class="fixed inset-0 z-[90] h-dvh w-dvw @(IsOpen ? "block" : "hidden")" onclick=@Close></div>
+@* ガイドOpen時に後ろを暗くする透過背景 transitionを使うため、↑と一緒にできない *@
+<div class="pointer-events-none fixed inset-0 h-dvh w-dvw bg-zinc-300 transition-opacity duration-200 ease-in-out @(IsOpen ? "opacity-20" : "opacity-0")"></div>
+@* ガイド部分本体 *@
+<div class="fixed top-[72px] left-0 z-[90] h-[calc(100dvh-72px)] w-full overflow-hidden rounded-t-xl transition-transform duration-500 ease-in-out @(IsOpen ? "" : "translate-y-[100dvh]")">
+    @* スワイプするナビゲーションバー　はお蔵入り *@
+    @* <div id="@barId" class="flex h-6 w-full items-center justify-center border border-white bg-white">
+    <div class="h-1 w-9 rounded-xs border border-zinc-400 bg-zinc-400"></div>
+    </div> *@
+
+    <div class="h-full border border-white bg-white">
+        <div class="relative flex h-9 items-center justify-center pt-2">
+            @* 閉じるボタン *@
+            <button type="button" class="absolute top-2 left-0 flex h-7 w-7 items-center justify-center" onclick=@Close>
+                <div class="absolute h-5 w-0.5 origin-center rotate-45 transform bg-black"></div>
+                <div class="absolute h-5 w-0.5 origin-center -rotate-45 transform bg-black"></div>
+            </button>
+            <label class="min-w-fit text-lg font-semibold">@Title</label>
+            @if (!IsApproval || IsReject)
+            {
+                @* 検索 / 確定ボタン *@
+                <div class="absolute top-2 right-0 z-[90] mr-2 flex">
+                    <button type="button" class="h-7 w-24 rounded-md bg-blue-700 text-left text-base text-white hover:bg-blue-600" @onclick="@(() => Search())">
+                        <div class="flex flex-row items-center justify-center">
+                            @if (!IsApproval && !IsYosan)
+                            {
+                                <img src="/images/modalsearch.png" class="h-3.5" />
+                            }
+                            <div class="p-0.5">@(IsApproval ? "確　定" : IsYosan ? "表　示" : "検索")</div>
+                        </div>
+                    </button>
+                </div>
+            }            
+        </div>
+        <div class="h-[calc(100%-36px)] @GetGridClass() px-1 pt-6">
+            @ChildContent
+        </div>
+    </div>
+</div>
+
+@* <script>
+    window.loadSwipeEvent = function (objectId, barId) {
+        var swipeElement = document.getElementById(barId);
+        var moveElement = document.getElementById(objectId);
+        var isHold = false;
+        var startY; // タッチ開始箇所
+        var threshold = 50; // ガイドを閉じる最小移動距離
+
+        swipeElement.addEventListener('pointerdown', function (e) {
+            isHold = true;
+            startY = e.clientY;
+            // console.log("ホールド開始");
+        });
+
+        swipeElement.addEventListener('pointermove', function (e) {
+            if (isHold) {
+                var moveDistance = e.clientY - startY; // タッチ開始箇所からの移動距離
+
+                // 初期位置より上には行かないように
+                if (moveDistance < 0) {
+                    moveDistance = 0;
+                }
+
+                // 移動距離分を要素も移動する
+                moveElement.style.translate = `0 ${moveDistance}px`;
+
+                // ポインターが要素から外れても追跡するように
+                this.setPointerCapture(e.pointerId);
+
+                // console.log("ホールド中");
+            }
+        });
+
+        swipeElement.addEventListener('touchmove', function (e) {
+            e.preventDefault(); // これが無いとすぐにpointercancelが発火してpointermoveが中断されてしまう場合がある(passive: false必須)
+            // console.log("touchmove...");
+        }, { passive: false });
+
+        swipeElement.addEventListener('pointercancel', function (e) {
+            isHold = false;
+            moveElement.style.translate = "0 0";
+            // console.log("ホールド中断");
+        });
+
+        swipeElement.addEventListener('pointerup', function (e) {
+            isHold = false;
+
+            if ((e.clientY - startY) > threshold) {
+                // しきい値よりも大きく下に動かした場合は閉じる
+                DotNet.invokeMethodAsync('BizOrder.Client', 'CallCloseEvent');
+            }
+            else {
+                // しきい値より小さければ初期位置に戻す
+                moveElement.style.translate = "0 0";
+            }
+            // console.log("ホールド終了");
+        });
+
+    };
+
+    // Closeした後もpointermoveで動かした状態が保持されるためリセットする関数
+    function resetTranslate(objectId) {
+        var element = document.getElementById(objectId);
+        element.style.translate = "0 0";
+    }
+
+</script> *@
+
+@code {
+    [Parameter, EditorRequired]
+    public bool IsOpen { get; set; }
+
+    [Parameter, EditorRequired]
+    public EventCallback<bool> Close { get; set; }
+
+    [Parameter]
+    public bool ForceRender { get; set; }
+
+    [Parameter]
+    public string? Title { get; set; }
+
+    [Parameter]
+    public Func<Task> Search { get; set; } = default!;
+
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    [Parameter]
+    public bool IsApproval { get; set; } = false;
+
+    [Parameter]
+    public bool IsReject { get; set; } = false;
+
+    [Parameter]
+    public bool IsYosan { get; set; } = false;
+
+    [Parameter]
+    public bool IsFilter { get; set; } = false;
+
+    private string GetGridClass()
+    {
+        string gridcss = "grid-rows-[auto_1fr] grid gap-y-6 overflow-auto";
+
+        if (IsApproval)
+        {
+            gridcss = "overflow-auto";
+        }
+        if (IsFilter)
+        {
+            gridcss = "grid-rows-[auto] grid overflow-scroll";
+        }
+        if (IsYosan)
+        {
+            gridcss = "grid-rows-[auto_1fr] grid gap-y-4 overflow-auto";
+        }
+
+        return gridcss;
+    }
+    #region スワイプで閉じる関連はお蔵入り
+    // private string objectId = string.Empty; // ガイド全体のID
+    // private string barId = string.Empty; // スワイプ対象のバー部分のID
+    // private static GuideBaseMobile? myInstance;
+
+    // protected override void OnInitialized()
+    // {
+    //     var guid = Guid.NewGuid();
+    //     objectId = $"swipe-object-{guid}";
+    //     barId = $"bar-{guid}";
+    //     myInstance = this;
+    // }
+
+    // protected override async Task OnAfterRenderAsync(bool firstRender)
+    // {
+    //     if (firstRender)
+    //     {
+    //         await JSRuntime.InvokeVoidAsync("loadSwipeEvent", objectId, barId);
+    //     }
+    // }
+
+    // protected override async Task OnParametersSetAsync()
+    // {
+    //     if (IsOpen)
+    //     {
+    //         // ガイドが開いたときJavascriptで変更したtranslateをリセットする
+    //         await JSRuntime.InvokeVoidAsync("resetTranslate", objectId);
+    //     }
+    // }
+    
+    // [JSInvokable]
+    // public static void CallCloseEvent()
+    // {
+    //     myInstance!.Close.InvokeAsync();
+    // }
+    #endregion
+
+}

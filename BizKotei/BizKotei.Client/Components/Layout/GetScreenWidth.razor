@@ -1,0 +1,42 @@
+﻿@using BizKotei.Client.Components.Modal
+@inject IJSRuntime JS
+@inject BizKotei.Client.Services.LayoutService layout
+@rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
+
+<WaitingForLoadingModal IsOpen="@(layout.screenWidth == 0)"></WaitingForLoadingModal>
+
+<script>
+	window.getScreenWidth = () => {
+		const orientationType = screen.orientation.type;
+
+		if(orientationType.startsWith("landscape"))
+		{
+			// 横向きなら大きい方を幅と解釈して返す
+			return Math.max(screen.height, screen.width);
+		}
+		else
+		{
+			// 縦向きなら小さい方を幅と解釈して返す
+			return Math.min(screen.height, screen.width);
+		}
+	};
+</script>
+
+@code
+{
+	protected override void OnInitialized()
+	{
+		base.OnInitialized();
+	}
+
+	protected override async Task OnAfterRenderAsync(bool firstRender)
+	{
+		if (firstRender && layout.screenWidth == 0)
+		{
+			// ウィンドウサイズを取得
+			var width = await JS.InvokeAsync<int>("getScreenWidth");
+			layout.SetWidth(width);
+			await InvokeAsync(StateHasChanged); // 画面を再描画
+		}
+	}
+}

@@ -1,0 +1,38 @@
+﻿<div class="">
+@*     <div class="@(IsOpen? "visible":"invisible") fixed inset-0 z-[100] flex h-dvh w-dvw items-center justify-center">
+        <div class="contents h-dvh w-dvw" @onclick="@(() => IsOpen = false)"></div>
+    </div> *@
+    <div class="absolute bottom-0 left-1/2 h-0 w-0 -translate-x-1/2 translate-y-1 transform border-r-8 border-b-8 border-l-8 border-r-transparent border-b-indigo-950 border-l-transparent @(IsOpen? "block z-[100]":"hidden")"></div>
+    <div class="absolute top-full right-0.5 max-w-64 min-w-[max-content] translate-y-1 overflow-visible bg-indigo-950 p-2 text-lg whitespace-nowrap @(IsOpen? "block z-[100]":"hidden")" data-test-id="container">
+        <div class="grid grid-cols-1 gap-y-2">
+            @foreach (var item in ItemList)
+            {
+                <a href="@item.Value" class="rounded-sm bg-transparent pr-6 pl-1.5 text-white hover:bg-white/30" @attributes="@GetTargetAttribute()">@item.Key</a>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public bool IsOpen { get; set; }
+
+    /// <summary>
+    /// [項目名, URL]のDictionary
+    /// </summary>
+    [Parameter, EditorRequired]
+    public Dictionary<string, string> ItemList { get; set; } = new ();
+
+    [Parameter]
+    public bool IsBlank { get; set; }
+
+    private Dictionary<string, object> GetTargetAttribute()
+    {
+        Dictionary<string, object> attributes = new();
+
+        if (IsBlank) attributes["target"] = "_blank";
+
+        return attributes;
+    }
+
+}

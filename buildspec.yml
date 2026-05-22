@@ -11,7 +11,7 @@ phases:
   build:
     commands:
       # Dockerイメージをビルド
-      - docker build -t $REPOSITORY_NAME .
+      - docker build --build-arg OWNER=$OWNER --build-arg YOUR_GITHUB_PAT=$YOUR_GITHUB_PAT -t $REPOSITORY_NAME .
       - docker tag $REPOSITORY_NAME:latest $IMAGE_URI:latest
   post_build:
     commands:

@@ -1,0 +1,62 @@
+﻿@inherits LayoutComponentBase
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JS
+@using BizKotei.Client.Components.Layout.NavigationBar
+@using BizClientLib.Pages
+
+<PageTitle>＋Biz工程管理</PageTitle>
+
+<div class="fixed top-0 z-50 grid h-svh w-screen grid-rows-[auto_minmax(0,1fr)] bg-white shadow-lg">
+    <div class="h-full w-full">
+        <TokenRefresh />
+        <GetScreenWidth />
+        <NavigationBar />
+    </div>
+
+    <div class="h-full w-full">
+        <div class="grid h-full w-full auto-rows-fr grid-cols-[auto_auto_minmax(0,1fr)_auto] bg-blue-50">
+            <div class="h-full w-full">
+                <MenuSideBar />
+            </div>
+            @* メニューバー右の空白 *@
+            <FrameForPCLayout />
+
+            <div class="col-start-3 h-full w-full">
+                <div class="grid h-full w-full grid-rows-[auto_auto_minmax(0,1fr)_auto] overflow-hidden">
+                    @* パンくずリスト上の空白 *@
+                    <FrameForPCLayout />
+
+                    <div class="row-start-2 h-full w-full">
+                        <Breadcrumbs />
+                    </div>
+
+                    <div class="row-start-3 h-full w-full overflow-auto">
+                        @Body
+                    </div>
+                    @* ページ下部の空白 *@
+                    <FrameForPCLayout />
+                </div>
+            </div>
+            @* 右端の空白 *@
+            <FrameForPCLayout />
+        </div>
+    </div>
+</div>
+
+
+<script>
+    function handleBeforeUnloadEvent(e) {
+        e.preventDefault();
+        e.returnValue = "";
+    }
+
+    window.addEventListener('beforeunload', handleBeforeUnloadEvent);
+
+    function removeEvent() {
+        window.removeEventListener('beforeunload', handleBeforeUnloadEvent);
+    }
+</script>
+
+@code {
+
+}

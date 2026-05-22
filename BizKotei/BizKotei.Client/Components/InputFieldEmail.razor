@@ -1,0 +1,112 @@
+﻿<InputFieldBase Type="InputFieldBase.InputType.Email"
+                @bind-InputValue="@InputValue"
+                IsInvalid="@IsInvalid"
+                IsDisabled="@IsDisabled"
+                HeightClass="@GetHeightClass()"
+                WidthClass="@GetWidthClass()"
+                Attributes="@Attributes"
+                MaxLength="@MaxLength"
+                Placeholder="@Placeholder"
+                IsNoTabFocus="@IsNoTabFocus"
+                OnInput="OnInputHandler"
+                OnKeyDown="OnKeyDownHandler" />
+
+@code {
+    /// <summary>
+    /// バインドしたい場合はパラメータを渡すのではなく「@bind-InputValue="@hoge"」としてください
+    /// </summary>
+    [Parameter]
+    public string? InputValue { get; set; }
+
+    /// <summary>
+    /// バリデーションエラー等の場合true
+    /// 枠や背景を赤にします
+    /// </summary>
+    [Parameter]
+    public bool IsInvalid { get; set; }
+
+    /// <summary>
+    /// 入力不可の場合true
+    /// 枠や背景をグレーにします
+    /// </summary>
+    [Parameter]
+    public bool IsDisabled { get; set; }
+
+    /// <summary>
+    /// 高さ関係のclassをオーバーライドします
+    /// 指定しなければデフォルト値
+    /// </summary>
+    [Parameter]
+    public string? HeightClass { get; set; }
+
+    /// <summary>
+    /// 幅関係のclassをオーバーライドします
+    /// 指定しなければデフォルト値
+    /// </summary>
+    [Parameter]
+    public string? WidthClass { get; set; }
+
+    [Parameter(CaptureUnmatchedValues = true)]
+    public Dictionary<string, object>? Attributes { get; set; }
+
+    [Parameter]
+    public int? MaxLength { get; set; }
+
+    [Parameter]
+    public string? Placeholder { get; set; }
+
+    /// <summary>
+    /// trueならタブキーでのフォーカス遷移をしない
+    /// </summary>
+    [Parameter]
+    public bool IsNoTabFocus { get; set; }
+
+    [Parameter]
+    public EventCallback<string> InputValueChanged { get; set; }
+
+    /// <summary>
+    /// @oninputの代わりに使ってください
+    /// </summary>
+    [Parameter]
+    public EventCallback<ChangeEventArgs> OnInput { get; set; }
+
+    /// <summary>
+    /// @onkeydownの代わりに使ってください
+    /// </summary>
+    [Parameter]
+    public EventCallback<KeyboardEventArgs> OnKeyDown { get; set; }
+
+    /// <summary>
+    /// oninput発生時の処理
+    /// </summary>
+    /// <param name="e"></param>
+    /// <returns></returns>
+    private async Task OnInputHandler(ChangeEventArgs e)
+    {
+        InputValue = e.Value?.ToString();
+        await InputValueChanged.InvokeAsync(InputValue);  // 入力値の変更を親コンポーネントに通知
+        await OnInput.InvokeAsync(e);  // 親コンポーネントでoninputをハンドリングするためにコールバック
+    }
+
+    /// <summary>
+    /// onkeydown発生時の処理
+    /// </summary>
+    /// <param name="e"></param>
+    /// <returns></returns>
+    private async Task OnKeyDownHandler(KeyboardEventArgs e)
+    {
+        await OnKeyDown.InvokeAsync(e);  // 親コンポーネントでonkeydownをハンドリングするためにコールバック
+    }
+
+    private string GetHeightClass()
+    {
+        // デフォルト値はPC版ガイドの検索条件と同じ
+        return HeightClass.IsNullOrEmpty() ? "h-6" : HeightClass;
+    }
+
+    private string GetWidthClass()
+    {
+        // デフォルト値はPC版ガイドの検索条件と同じ
+        return WidthClass.IsNullOrEmpty() ? "w-96" : WidthClass;
+    }
+}

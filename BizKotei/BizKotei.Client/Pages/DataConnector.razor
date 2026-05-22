@@ -1,0 +1,9 @@
+﻿@attribute [Route(CommonPathInfo.Path.DataConnector)]
+@layout BizClientLib.Components.Layout.DataConnectorLayout
+@using BizClientLib.Shared
+@using BizShareLib.Shared
+@inject IConfiguration Configuration
+@rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
+
+@* Biz製品によって変更 *@
+<BizClientLib.Pages.DataConnector LogoPath="images/Biz_kotei.png" cYear="2026" BizVersion="@Configuration["Version"]" BizType="BizTypeEnum.BizKotei"></BizClientLib.Pages.DataConnector>

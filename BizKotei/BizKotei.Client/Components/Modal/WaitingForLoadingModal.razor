@@ -1,0 +1,30 @@
+﻿<ModalBaseNoBackGround IsOpen=@IsOpen IsBackColorTransparent="true" IsAnimation="true">
+    <div class="opacity-80 flex flex-col items-center justify-center rounded-sm bg-blue-400 px-16 py-12">
+        <div class="flex flex-row">
+            <div class="h-2 w-2 animate-ping rounded-full bg-white"></div>
+            <div class="mx-4 h-2 w-2 animate-ping rounded-full bg-white"></div>
+            <div class="h-2 w-2 animate-ping rounded-full bg-white"></div>
+        </div>
+        <label class="mt-5 font-bold text-white">Loading...</label>
+    </div>
+</ModalBaseNoBackGround>
+
+@code {
+    private bool prevIsOpen;
+    private bool shouldRender;
+
+    [Parameter, EditorRequired]
+    public bool IsOpen { get; set; }
+
+    protected override void OnParametersSet()
+    {
+        // 前回値と異なる場合にのみレンダリングする
+        // ParameterにEventCallbackが存在するため、親Componentのレンダリングで毎回レンダリングされるのを防ぐため。
+        shouldRender = prevIsOpen != IsOpen;
+        prevIsOpen = IsOpen;
+
+    }
+
+    protected override bool ShouldRender() => shouldRender;
+
+}

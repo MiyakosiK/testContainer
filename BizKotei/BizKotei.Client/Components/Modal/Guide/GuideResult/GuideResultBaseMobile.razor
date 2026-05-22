@@ -1,0 +1,255 @@
+﻿@typeparam TItem
+@using System.Reflection
+
+<div class="@(IsYosan ? "mt-3": "mt-6") w-full overflow-auto">
+    @switch (ResultView)
+    {
+        case -9:  // 初期状態
+        case -1:  // Loading
+            break;
+
+        case 0:
+            <NoDataResult ScreenSize=NoDataResult.ScreenType.Small />
+            break;
+
+        default:
+            <div class="grid grid-cols-1 border-b border-zinc-700">
+                @if (!(HeaderPairs is null || HeaderPairs.Count == 0))
+                {
+                    @if (Items is not null)
+                    {
+                        int i = 1;
+                        @foreach (var item in Items)
+                        {
+                            <div class="contents" @onclick="@(() => SetValue(item))">
+
+                                <div class="@(IsYosan ? "flex" : "")">
+                                    @if (IsYosan)
+                                    {
+                                        <div class="flex items-center border-t border-zinc-700 px-2 py-1 @GetBackGroundColorClass(i)">
+                                            <input type="radio" name="@radioGroupName" @onclick:stopPropagation @onchange="() => OnItemChecked(item)" />
+                                        </div>
+                                    }
+                                    <div class="@(IsYosan ? "w-full truncate" : "")">
+                                        @foreach (var header in (IsYosan ? HeaderPairs.Take(2) : HeaderPairs))
+                                        {
+                                            object? itemValue;
+                                            string? cellValue = string.Empty;
+                                            if (propertyCache.TryGetValue(header.Key, out var property))
+                                            {
+                                                itemValue = property.GetValue(item);
+                                                cellValue = itemValue is null ? "" : itemValue.ToString();
+                                            }
+
+                                            @* item毎に区切る線は一番上の行のみ入れる *@
+                                            @if (header.Equals(HeaderPairs.First()))
+                                            {
+                                                @* 一番上の行のみ上に黒線を引く *@
+                                                @* <div class="border-t border-l border-zinc-700 bg-zinc-500 p-1 pr-4 text-white">@header.Value</div> *@
+                                                <div class="overflow-hidden border-t border-zinc-700 px-1 text-ellipsis @GetBackGroundColorClass(i) whitespace-nowrap text-black">@cellValue</div>
+                                            }
+                                            else
+                                            {
+                                                @* 他の行 *@
+                                                @* <div class="border-t border-l border-t-white border-l-zinc-700 bg-zinc-500 p-1 pr-4 text-white">@header.Value</div> *@
+                                                <div class="overflow-hidden px-1 text-ellipsis @GetBackGroundColorClass(i) whitespace-nowrap text-black">@cellValue</div>
+                                            }
+                                        }
+                                    </div>
+                                    @if (IsYosan)
+                                    {
+                                        <span class="flex flex-col justify-center border-t border-zinc-700 px-3 py-1 @GetBackGroundColorClass(i)">
+                                            <img src="/images/chevron-top.png" class="h-3 w-3 mix-blend-multiply @((openedItems.Contains(item) ? "rotate-180" : ""))">
+                                        </span>
+                                    }
+                                </div>
+                            </div>
+
+                            @* 予算参照でのアコーディオン *@
+                            @if (openedItems.Contains(item))
+                            {
+                                int currentIndex = 0;
+                                string? firstValue = null;
+
+                                <div class="accordion-body border-t border-zinc-700 px-3 py-1 @GetBackGroundColorClass(i)" @onclick="@(() => SetValue(item))">
+
+                                    @foreach (var header in HeaderPairs.Skip(2))
+                                    {
+                                        object? itemValue;
+                                        string? cellValue = string.Empty;
+                                        if (propertyCache.TryGetValue(header.Key, out var property))
+                                        {
+                                            itemValue = property.GetValue(item);
+                                            cellValue = itemValue is null ? "" : itemValue.ToString();
+                                        }
+
+                                        @* 工種管理区分を取得 *@
+                                        if (currentIndex == 0)
+                                        {
+                                            firstValue = cellValue;
+                                            currentIndex++;
+                                            continue;
+                                        }
+
+                                        @* 工種の表示を制御（工種管理区分が0or1） *@
+                                        if (currentIndex == 3 && (firstValue == "0" || firstValue == "1"))
+                                        {
+                                            currentIndex++;
+                                            continue;
+                                        }
+
+                                        @* 種別の表示を制御（工種管理区分が0or1or2） *@
+                                        if (currentIndex == 4 && (firstValue == "0" || firstValue == "1" || firstValue == "2"))
+                                        {
+                                            currentIndex++;
+                                            continue;
+                                        }
+
+                                        @* 金額をカンマ区切り *@
+                                        if (currentIndex == 5)
+                                        {
+                                            cellValue = decimal.TryParse(cellValue, out var d) ? d.ToString("N0") : "0";
+                                        }
+
+                                        <li class="flex pl-2">
+                                            <span class="@GetFontClass(header.Value) flex w-16 shrink-0 items-center">@header.Value</span>
+                                            <span>@(header.Value.IsNullOrEmpty() ? "　" : "：")</span>
+                                            <span class="truncate">@cellValue</span>
+                                        </li>
+
+                                        currentIndex++;
+                                    }
+                                </div>
+                            }
+                            i++;
+                        }
+                    }
+                }
+            </div>
+            break;
+    }
+</div>
+
+<WaitingForLoadingModal IsOpen="@isOpen" />
+
+@code {
+    [Parameter]
+    public int ResultView { get; set; }
+
+    [Parameter]
+    public Func<TItem, Task> SetValueRequested { get; set; } = default!;
+
+    /// <summary>
+    /// プロパティ名とそれに対応する項目名のペア(Key:プロパティ名, Value:項目名)
+    /// スマホ版は縦に並べるので上限はない。
+    /// </summary>
+    [Parameter]
+    public Dictionary<string, string>? HeaderPairs { get; set; }
+
+    [Parameter]
+    public List<TItem>? Items { get; set; }
+
+    [Parameter]
+    public bool IsYosan { get; set; } = false;
+
+    [Parameter]
+    public TItem? SelectedItem { get; set; }
+
+    [Parameter]
+    public EventCallback<TItem?> SelectedItemChanged { get; set; }
+
+    private string radioGroupName = "itemRadioGroup";
+
+    private TItem? openedItem;
+
+    private HashSet<TItem> openedItems = new();
+
+    private bool isOpen;
+
+    private HashSet<object> expandedItems = new();
+
+    // プロパティをキャッシュするDictionary
+    private Dictionary<string, PropertyInfo> propertyCache = new();
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (ResultView == -1)
+        {
+            isOpen = true;
+        }
+        else
+        {
+            isOpen = false;
+        }
+
+        // 列に対応するプロパティをキャッシュ
+        if (propertyCache.Count == 0 && HeaderPairs is not null)
+        {
+            foreach (var header in HeaderPairs)
+            {
+                var property = typeof(TItem).GetProperty(header.Key);
+                if (property is not null)
+                {
+                    propertyCache[header.Key] = property;
+                }
+            }
+        }
+
+        await base.OnParametersSetAsync();
+    }
+
+    // 奇数個目は白背景、偶数個目は水色背景にする
+    private string GetBackGroundColorClass(int rowindex)
+    {
+        return (rowindex % 2) switch
+        {
+            0 => "bg-blue-50",
+            1 => "bg-white",
+            _ => "bg-blue-50"
+        };
+    }
+
+    // 選択行の値を親コンポーネントに渡す(予算参照の場合はアコーディオンの開閉)
+    private async Task SetValue(TItem item)
+    {
+        if (IsYosan)
+        {
+            if (openedItems.Contains(item))
+            {
+                openedItems.Remove(item);
+            }
+            else
+            {
+                openedItems.Add(item);
+            }
+        }
+        else
+        {
+            await SetValueRequested.Invoke(item);
+        }
+    }
+
+    private async Task OnItemChecked(TItem item)
+    {
+        SelectedItem = item;
+        await SelectedItemChanged.InvokeAsync(item);
+    }
+
+    private string GetFontClass(string text)
+    {
+        if (!text.IsNullOrEmpty())
+        {
+            return text.Length switch
+            {
+                <= 3 => "text-base",
+                4 => "text-sm",
+                >= 5 => "text-xs"
+            };
+        }
+        else
+        {
+            return "";
+        }
+
+    }
+}

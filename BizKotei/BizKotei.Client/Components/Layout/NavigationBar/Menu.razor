@@ -1,0 +1,115 @@
+﻿@layout BizClientLib.Components.Layout.DataConnectorLayout
+@rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
+@using BizKotei.Client.Components.Modal
+@using BizShareLib.HttpComModels.DataConnectorComModel;
+@using System.ComponentModel.DataAnnotations;
+@using System.Net.Http;
+@using System.Net.Http.Json;
+@using BizKotei.Client.Services
+@using BizKotei.Client.Shared
+@using BizClientLib.Services.Interfaces
+@inject IConfiguration Configuration
+@inject IAppRequest AppRequest
+@inject NavigationManager NavigationManager
+
+<button class="flex h-10 w-10 items-center justify-center p-2" @onclick="OpenMenu" data-test-id="open">
+    <img src="/images/humicon.png" alt="メニュー" class="object-scale-down">
+</button>
+
+<BizClientLib.Components.Overlay IsOpen=@isOpen Close="CloseMenu" />
+<div class="fixed top-0 right-0 left-0 h-full w-56 bg-white drop-shadow-xl transition-transform @((isOpen? "transform-none z-[100]" : "-translate-x-full"))" tabindex="-1" data-test-id="container">
+    <div class="flex bg-blue-900">
+        <div class="w-4/5 p-2 text-base font-semibold text-white" data-test-id="menu">メニュー</div>
+        <button class="absolute top-0 right-0 flex h-10 w-10 items-center justify-center" @onclick="CloseMenu">
+            <div class="absolute h-8 w-0.5 origin-center rotate-45 transform bg-white"></div>
+            <div class="absolute h-8 w-0.5 origin-center -rotate-45 transform bg-white"></div>
+        </button>
+    </div>
+    <div class="px-4">
+        <ul>
+            @if (homeGroupPathTitle.Count > 0)
+            {
+                <li>
+                    <ul class="ml-5">
+                        <li class="mt-4">
+                            <a href=@PathInfo.Path.Home @onclick="CloseMenu" data-test-id="home-link-mobile">
+                                <div class="flex items-center">
+                                    <img src=@homeGroupPathTitle[PathInfo.Path.Home].MenuIconSrc class="w-6" />
+                                    <div class="ml-2 font-semibold tracking-widest">ホーム</div>
+                                </div>
+                            </a>
+                        </li>
+                        @* <li class="mt-4">
+                            <a href=@PathInfo.Path.InputOrder @onclick="CloseMenu" data-test-id="input-order-link-mobile">
+                                <div class="flex items-center">
+                                    <img src=@homeGroupPathTitle[PathInfo.Path.InputOrder].MenuIconSrc class="w-6" />
+                                    <div class="ml-2 font-semibold tracking-widest">～～入力</div>
+                                </div>
+                            </a>
+                        </li>
+                        <li class="mt-4">
+                            <a href=@PathInfo.Path.ListOrder @onclick="CloseMenu" data-test-id="list-order-link-mobile">
+                                <div class="flex items-center">
+                                    <img src=@homeGroupPathTitle[PathInfo.Path.ListOrder].MenuIconSrc class="w-6" />
+                                    <div class="ml-2 font-semibold tracking-widest">～～一覧</div>
+                                </div>
+                            </a>
+                        </li> *@
+                    </ul>
+                </li>
+            }
+            <li class="mt-6">
+                <hr class="border-t border-t-gray-400" />
+            </li>
+            <li>
+                <ul class="my-2 ml-5">
+                    <li class="mt-4">
+                        <a href="@Configuration["HelpUrlMobile"]" target="_blank" data-test-id="help-link">
+                            <div class="flex">
+                                <div class="ml-2 font-semibold tracking-widest">ヘルプ</div>
+                            </div>
+                        </a>
+                    </li>
+                    <li class="mt-4">
+                        <a href="@Configuration["StatusUrl"]" target="_blank" data-test-id="status-link">
+                            <div class="flex">
+                                <div class="ml-2 font-semibold tracking-widest">稼働状況</div>
+                            </div>
+                        </a>
+                    </li>
+                </ul>
+            </li>
+        </ul>
+    </div>
+</div>
+
+@code {
+    private bool isOpen = false;
+
+    private void OpenMenu() => isOpen = true;
+
+    private void CloseMenu() => isOpen = false;
+
+    bool IsNipoDisabled { get; set; } = false;
+    bool IsPunchDisabled { get; set; } = false;
+
+    private Dictionary<string, PathInfo.IconTitlePair> homeGroupPathTitle = new();
+
+    // 自社ユーザー：true、外注業者ユーザー：false
+    private bool IsOwnCompany = default!;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Cookieにある接続情報を取得
+        var resDCForm = await AppRequest.Get<DataConnectForm>("api/DataConnector/get-cookie");
+        if (resDCForm is not null)
+        {
+            IsOwnCompany = resDCForm.IsOwnCompany ?? false;
+        }
+
+        // メニュー名称を取得し初期化
+        homeGroupPathTitle = PathInfo.GetHomeGroupPathTitle();
+        StateHasChanged();
+    }
+
+}

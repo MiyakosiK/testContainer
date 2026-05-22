@@ -1,0 +1,115 @@
+﻿@inject NavigationManager NavigationManager
+@rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
+
+<nav class="flex h-9 bg-white py-1" aria-label="BreadcrumbPC">
+    <ol class="flex px-1">
+        @foreach (string path in paths.Keys)
+        {
+            <li class="flex items-center" data-test-id="path-info">
+                @{
+                    bool isCurrentPage = path == new Uri(NavigationManager.Uri).AbsolutePath;                   
+                }
+                <a href="@(isCurrentPage ? null : path)" class="mt-0.5 flex">
+                    <img src=@paths[path].IconSrc class="mr-2 ml-1 h-6 items-center object-scale-down" />
+                    <div class="text-center text-lg font-medium text-blue-500">
+                        @paths[path].Title
+                    </div>
+                </a>
+            </li>
+        }
+    </ol>
+</nav>
+
+@code {
+    // {パス, {タイトル, アイコンソース}}}
+    // UI部分でリンクと表示をループで作成するために使用する
+    private Dictionary<string, PathInfo.IconTitlePair> paths = new();
+    private string currentPath = "";
+    private Dictionary<string, PathInfo.IconTitlePair> homeGroupPathTitle = new();
+    private Dictionary<string, PathInfo.IconTitlePair> pathTitle = new();
+
+    protected override void OnInitialized()
+    {
+        // BrowserのNavigation barの変更を検知する
+        NavigationManager.LocationChanged += LocationChanged;
+
+        // Path情報を初期化
+        homeGroupPathTitle = PathInfo.GetHomeGroupPathTitle();
+        pathTitle = PathInfo.GetPathTitle();
+
+        // パンくずリストComponent初期化時にも生成を行う
+        // ２回目以降は、上記で設定したLocationChangedイベントにより、パンくずリストが更新される
+        GeneratePaths(NavigationManager.Uri);
+        base.OnInitialized();
+    }
+
+    private void LocationChanged(object? sender, LocationChangedEventArgs? e)
+    {
+        if (e is null)
+            return;
+
+        GeneratePaths(e.Location);
+        StateHasChanged();
+    }
+
+    private void GeneratePaths(string rawUri)
+    {
+        currentPath = rawUri; // 現在のパスを更新
+
+        paths.Clear();
+
+        Uri uri = new Uri(rawUri);
+
+        List<string> pathNames = uri.AbsolutePath.Split("/").ToList();
+
+        // 先頭の空文字を削除
+        pathNames.RemoveAll((el) => el == "");
+
+        // Pathを積み重ねる必要があるので、変数を用意
+        var href = string.Empty;
+
+        // TitleHome GroupのPathに関する処理
+
+        // Root Pathと注文者などの他のHome系Pathとを区別する。
+        // 比較するタイミングのpathNames[0]には"/"が含まれないので、以下の条件でも問題ない。。
+        if (pathNames.Count > 0 && homeGroupPathTitle.ContainsKey($"/{pathNames[0]}"))
+        {
+            // Root Path以外のHome系Pathの場合
+
+            // パンくずリストに表示される一番左の項目に値を追加
+            // ここには、"/"以外のHome系Pathが入る
+            var homePath = $"/{pathNames[0]}";
+            paths[homePath] = homeGroupPathTitle[homePath];
+
+            href = homePath;
+
+            // TitleHome Group外に関する処理のために、pathNamesからHome GroupのPathを削除
+            pathNames.RemoveAt(0);
+        }
+        else
+        {
+            // Root Pathの場合
+            if (homeGroupPathTitle.ContainsKey(PathInfo.Path.Home))
+            {
+                // パンくずリストに表示される一番左の項目に値を追加
+                paths[PathInfo.Path.Home] = homeGroupPathTitle[PathInfo.Path.Home];
+            }
+        }
+
+        // TitleHome Group外のPathに関する処理
+        foreach (string item in pathNames)
+        {
+            href = $"{href}/{item}";
+            if (pathTitle.ContainsKey(href))
+            {
+                paths[href] = pathTitle[href];
+            }
+        }
+    }
+
+    public void Dispose()
+    {
+        NavigationManager.LocationChanged -= LocationChanged;
+    }
+
+}

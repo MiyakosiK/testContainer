@@ -1,0 +1,33 @@
+﻿@if (!(RadioLabels is null || RadioLabels.Count == 0))
+{
+    <InputRadioGroup Name="@RadioName" @bind-Value="@Value" @bind-Value:after="@(()=>OnValueChanged())">
+        <div class="col-span-2 flex h-6 flex-row items-center p-1">
+            @foreach (var (label, index) in RadioLabels.Select((value, i) => (value, i)))
+            {
+                <label class="flex flex-row items-center">
+                    <InputRadio Value="index" id="@($"{label}-{index}")" />
+                    <span class="ml-1 mr-4 w-fit min-w-fit">@label</span>
+                </label>
+            }
+        </div>
+    </InputRadioGroup>
+}
+
+@code {
+    [Parameter]
+    public int Value { get; set; }
+
+    [Parameter, EditorRequired]
+    public List<string>? RadioLabels { get; set; }
+
+    [Parameter, EditorRequired]
+    public string? RadioName { get; set; }
+
+    [Parameter]
+    public EventCallback<int> ValueChanged { get; set; }
+
+    private async Task OnValueChanged()
+    {
+        await ValueChanged.InvokeAsync(Value);
+    }
+}

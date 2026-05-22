@@ -1,0 +1,118 @@
+﻿@using BizKotei.Client.Shared
+@using BizShareLib.Shared
+@using BizServerLib.Shared
+@using System.Security.Cryptography
+@using System.Text
+@using System.Web
+@using BizServerLib.Models
+@inject NavigationManager navigationManager
+@inject AuthSettingModel authSetting
+@attribute [Route(CommonPathInfo.Path.SsoRedirect)]
+
+@code {
+    [CascadingParameter]
+    public HttpContext HttpContext { get; set; } = default!;
+
+    /// <summary>
+    /// 認証後に遷移するURL
+    /// </summary>
+    [SupplyParameterFromQuery]
+    [Parameter]
+    public string? destination { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        var currentUri = new Uri(navigationManager.Uri);
+        var origin = currentUri.PathAndQuery;
+
+        Console.WriteLine($"SsoRedirect in:{origin}");
+
+        // APIコール時に401が発生した場合は、明示的にこのページに遷移する。そのため、リダイレクト後に表示させるページを明示的に指定する。
+        // 要件に応じて、発生元にも変更可能だが、現時点ではHome固定にする。
+        if (origin.Contains(CommonPathInfo.Path.SsoRedirect))
+        {
+            if (!destination.IsNullOrEmpty())
+            {
+                origin = destination;
+                if (Utility.AssessesDestinationUrl(navigationManager.BaseUri, destination))
+                {
+                    origin = destination;
+                }
+                else
+                {
+                    origin = PathInfo.Path.Home;
+                }
+            }
+        }
+
+        if (origin.IsNullOrEmpty())
+            origin = PathInfo.Path.Home;
+
+        Console.WriteLine($"SsoRedirect out:{origin}");
+
+        var redirectUrl = GetAuthorizeUrl(origin!);
+        navigationManager.NavigateTo(redirectUrl, true);
+
+        // 既知のIssueで解決済みとなっているが、OnInitializedではエラーが発生するため、Asyncで処理をする
+        // Static Server Renderingのため、OnAfterRenderが使えなかった。
+        // https://github.com/dotnet/aspnetcore/issues/13582
+        await Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// 認証画面へのリダイレクトURLを生成（同時にCSRF対策のCookieを登録）
+    /// </summary>
+    /// <param name="origin">リダイレクトを行う前のURL</param>
+    /// <returns>SSO ServerへのリダイレクトURL</returns>
+    private string GetAuthorizeUrl(string origin)
+    {
+        var pkceSecret = authSetting.Client.PkceHashSecret;
+
+        // CSRF対策
+        // state pkce
+        var rawState = Convert.ToBase64String(GetRandomBytes(32));
+        var rawVerifier = Convert.ToBase64String(GetRandomBytes(32));
+        var state = ServerUtility.GetBase64EncoedSha256Hash(rawState + pkceSecret);
+        var verifier = ServerUtility.GetBase64EncoedSha256Hash(rawVerifier + pkceSecret);
+        var challenge = ServerUtility.GetBase64EncoedSha256Hash(verifier);
+        var challengeMethod = "S256";
+
+        var queryString = HttpUtility.ParseQueryString(string.Empty);
+        queryString["scope"] = authSetting.Client.Scope;
+        queryString["response_type"] = authSetting.Client.ResponseType;
+        queryString["client_id"] = authSetting.Client.ClientId;
+        queryString["redirect_uri"] = authSetting.Client.RedirectUri;
+        queryString["code_challenge"] = challenge;
+        queryString["code_challenge_method"] = challengeMethod;
+        queryString["state"] = state;
+
+        var redirectUri = $"{authSetting.Server.AuthorizeEndpoint}?{queryString}";
+
+        // XSRF対策TokenをCookieに保持する
+        var options = new CookieOptions
+        {
+            Expires = DateTime.UtcNow.AddMinutes(30),
+            IsEssential = true,
+            HttpOnly = true,
+            SameSite = SameSiteMode.Lax,
+            Secure = true,
+        };
+
+        HttpContext.Response.Cookies.Append(CookieKey.CSRF_TOKEN
+            , $"{rawState}:{rawVerifier}:{Convert.ToBase64String(Encoding.UTF8.GetBytes(origin))}"
+            , options
+            );
+
+        return redirectUri;
+    }
+
+    private static byte[] GetRandomBytes(int length)
+    {
+        using (var rng = RandomNumberGenerator.Create())
+        {
+            var bytes = new byte[length];
+            rng.GetBytes(bytes);
+            return bytes;
+        }
+    }
+}

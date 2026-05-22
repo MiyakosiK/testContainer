@@ -1,0 +1,109 @@
+﻿@using BizKotei.Client.Components
+
+<BizClientLib.Components.Overlay IsOpen=@IsOpen Close=@Close IsBackColorTransparent="@IsBackColorTransparent" />
+<div class="-translate-y-1/2 -translate-x-1/2 max-w-11/12 fixed left-1/2 top-1/2 border-0 @((isLoading? "opacity-100" : "opacity-0")) @(isVisible ? "visible" : "invisible") @(IsAnimation ? "transition-opacity duration-500" : "") @(string.IsNullOrWhiteSpace(Zindex) ? "z-[100]" : Zindex)">
+    @ChildContent
+</div>
+
+@code {
+    private bool prevIsOpen;
+
+    private bool shouldRender;
+
+    [Parameter, EditorRequired]
+    public RenderFragment? ChildContent { get; set; }
+
+    [Parameter, EditorRequired]
+    public bool IsOpen { get; set; }
+
+    /// <summary>
+    /// 枠外クリックで閉じるイベントコールバック
+    /// </summary>
+    [Parameter]
+    public EventCallback<bool> Close { get; set; }
+
+    /// <summary>
+    /// モーダルを開いたままレンダリングする必要がある場合にtrue
+    /// </summary>
+    [Parameter]
+    public bool ForceRender { get; set; }
+
+    /// <summary>
+    /// 後ろにグレーの透過背景を出したくない場合はtrue
+    /// </summary>
+    [Parameter]
+    public bool IsBackColorTransparent { get; set; }
+
+    /// <summary>
+    /// 表示・非表示の切り替えを滑らかにアニメーションしたい場合はtrue
+    /// </summary>
+    [Parameter]
+    public bool IsAnimation { get; set; }
+
+    /// <summary>
+    /// zindexの値を変えたい場合は指定(デフォルト：z-[100])
+    /// </summary>
+    [Parameter]
+    public string? Zindex { get; set; }
+
+    protected override async void OnParametersSet()
+    {
+        // 前回値と異なる場合にのみレンダリングする
+        // ParameterにEventCallbackが存在するため、親Componentのレンダリングで毎回レンダリングされるのを防ぐため。
+        shouldRender = prevIsOpen != IsOpen;
+        prevIsOpen = IsOpen;
+        await ToggleVisible();
+    }
+
+    protected override bool ShouldRender() => shouldRender || ForceRender;
+
+    private bool isLoading;
+    private bool isMidTransition;
+    private bool isVisible;
+    private async Task ToggleVisible()
+    {
+        if (IsAnimation)
+        {
+            if (IsOpen)
+            {
+                isVisible = true;
+                isLoading = true;
+                StateHasChanged();
+
+                // 表示のTransitionが完了するまで待機する
+                isMidTransition = true;
+                await Task.Delay(500);
+                isMidTransition = false;
+            }
+            else
+            {
+                while (isMidTransition)
+                {
+                    // 表示のTransitionが完了するまで待機する
+                    await Task.Delay(100);
+                }
+                isLoading = false;
+                StateHasChanged();
+
+                // 非表示のTransitionが完了するまで待機してからinvisible
+                await Task.Delay(500);
+                isVisible = false;
+                StateHasChanged();
+            }
+        }
+        else
+        {
+            if (IsOpen)
+            {
+                isVisible = true;
+                isLoading = true;
+            }
+            else
+            {
+                isVisible = false;
+                isLoading = false;
+            }
+        }
+    }
+}
+

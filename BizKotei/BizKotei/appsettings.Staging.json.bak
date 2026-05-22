@@ -1,0 +1,32 @@
+{
+  // 検証環境AppRunnerインフラで参照される設定
+  "AWS": {
+    //"Profile": "kendweb-dev",
+    "Region": "ap-northeast-1",
+    "UserPoolId": "ap-northeast-1_vWnzuCqOw",
+    "UserPoolClientId": "2ov01km7tspqrl4e6k4ohvhbqf",
+    "memo": "@kendweb-dev/kendweb"
+  },
+  "WebApi": {
+    "Host": "kdwapi-closed-1.neox-staging.net",
+    "LambdaHost": "zlngto8ey7.execute-api.ap-northeast-1.amazonaws.com",
+    "TenantsProvisionedService": "bizkotei" //Biz製品によって変更
+  },
+  "SSO": {
+    "AuthServerHost": "auth.neox-staging.net",
+    "CallbackHost": "kotei.neox-staging.net", //Biz製品によって変更
+    "ClientId": "biz-kotei-staging", //Biz製品によって変更
+    "Secret": "reference ssm parameter store", //SSMから取得
+    "PkceHashSecret": "reference ssm parameter store" //SSMから取得
+  },
+  "ENV": {
+    // 32桁英数字（大・小含む）で用意する
+    "ProtectKey": "" //SSMから取得
+  },
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft.AspNetCore": "Warning"
+    }
+  }
+}

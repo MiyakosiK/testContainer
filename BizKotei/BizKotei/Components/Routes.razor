@@ -1,0 +1,21 @@
+﻿@using BizShareLib.Shared
+
+<CascadingValue Value="BizType">
+    <Router AppAssembly="@typeof(Program).Assembly" AdditionalAssemblies="new[] { typeof(Client._Imports).Assembly }">
+        <Found Context="routeData">
+            <AuthorizeView>
+                <NotAuthorized>
+                    <SsoRedirect />
+                </NotAuthorized>
+                <Authorized>
+                    <RouteView RouteData="routeData" />
+                    <FocusOnNavigate RouteData="@routeData" Selector="h1" />
+                </Authorized>
+            </AuthorizeView>
+        </Found>
+    </Router>
+</CascadingValue>
+
+@code {
+    private BizTypeEnum BizType = BizTypeEnum.BizKotei; //Biz製品よって変更
+}

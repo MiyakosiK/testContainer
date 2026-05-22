@@ -1,0 +1,300 @@
+﻿@inject BizKotei.Client.Services.LayoutService layout
+@using BizKotei.Client.Components.Modal
+
+@switch (Type)
+{
+	case InputType.Area:
+		@* iPhoneの時にCSSがデフォルトで上書きされるため分岐を追加。応急処置 *@
+		@if (IsDisabled)
+		{
+			<div type="text" class="flex @(IsDisFixHeight ? HeightClass + " overflow-auto":"items-center ") @WidthClass @GetColorClass() @(layout.IsMobile ? "min-h-7": "min-h-6" ) rounded-none px-1">
+				<span class="w-full break-all whitespace-pre-line @WidthClass @GetTextRightClass()">
+					@InputValue
+				</span>
+			</div>
+		}
+		else
+		{
+			<textarea type="text" class="@HeightClass @WidthClass @GetColorClass() rounded-none p-1 break-all whitespace-pre-line" @bind="@InputValue" @oninput="OnInputHandler" @attributes="@GetAdditionalAttributes()" @onkeydown="OnKeyDownHandler" @onkeydown:preventDefault="isOnKeyDownPreventDefaultEnter" />
+		}
+		break;
+
+	case InputType.Select:
+		<select class="@HeightClass @WidthClass @GetColorClass() rounded-none" @bind="@InputValue" @oninput="OnInputHandler" @attributes="@GetAdditionalAttributes()">
+			@if (IsSelectRequired)
+			{
+				<option hidden value="">選択してください</option>
+			}
+			else
+			{
+				<option value="" class="bg-white"></option>
+			}
+			@if (SelectItems is not null && SelectItems.Count > 0)
+			{
+				@foreach (var item in SelectItems)
+				{
+					<option value="@item.Key" class="bg-white">@item.Value</option>
+				}
+			}
+		</select>
+		break;
+
+	case InputType.Email:
+		<input type="email" class="@HeightClass @WidthClass @GetColorClass() rounded-none p-1" @bind-value="@InputValue" @oninput="OnInputHandler" @attributes="@GetAdditionalAttributes()" @onkeydown:preventDefault="@isOnKeyDownPreventDefaultEnter" />
+		break;
+
+	case InputType.Date:
+		@* <input type="date" min="2000-01-01" max="2099-12-31" class="@HeightClass @WidthClass @GetColorClass() rounded-none p-1" @bind-value="@InputDate" @oninput="OnInputHandler" @attributes="@GetAdditionalAttributes()" /> *@
+		<div class="flex flex-col">
+			<button type="button" @onclick="@(() => isOpenCalender = true)" class="@HeightClass @WidthClass @GetColorClass() form-text rounded-none" @attributes="@GetAdditionalAttributes()">@InputDate?.ToString("yyyy/MM/dd")</button>
+			<Calender SelectedDate="@InputDate" IsOpen="@isOpenCalender" Close="@(() => isOpenCalender = false)" SelectedDateChanged="OnInputDateHandler" IsReverseWhenNoSpace="true" />
+		</div>
+		break;
+
+	default:
+		@* iPhoneの時にCSSがデフォルトで上書きされるため分岐を追加。応急処置 *@
+		@if (IsDisabled)
+		{
+			<div type="text" class="flex @WidthClass @GetColorClass() @(layout.IsMobile ? "min-h-7": "min-h-6" ) items-center rounded-none px-1">
+				<span class="w-full break-all @WidthClass @GetTextRightClass()">
+					@InputValue
+				</span>
+			</div>
+		}
+		else
+		{
+			<input type="text" class="@HeightClass @WidthClass @GetColorClass() @GetTextRightClass() rounded-none p-1 focus:outline-hidden" @bind-value="@InputValue" @oninput="OnInputHandler" @attributes="@GetAdditionalAttributes()" @onkeydown="OnKeyDownHandler" @onkeydown:preventDefault="@isOnKeyDownPreventDefaultEnter" />
+		}
+		break;
+}
+
+@code {
+	// 共通の背景や枠の色を設定するclass
+	private const string DefaultColorClass = "border border-zinc-400 bg-white transition-colors focus:bg-yellow-100 focus:border-sky-300 focus:outline-hidden";
+	private const string InvalidColorClass = "border border-red-600 bg-red-100 focus:outline-hidden";
+	private const string DisabledColorClass = "border border-zinc-400 bg-zinc-200 focus:outline-hidden";
+	private const string MobileGuideColorClass = "border border-zinc-400 bg-blue-50 transition-colors focus:bg-yellow-100 focus:border-sky-300 focus:outline-hidden";
+
+	/// <summary>
+	/// バインドしたい場合はパラメータを渡すのではなく「@bind-InputValue="@hoge"」としてください
+	/// </summary>
+	[Parameter]
+	public string? InputValue { get; set; }
+
+	/// <summary>
+	/// 日付形式の入力値
+	/// </summary>
+	[Parameter]
+	public DateTime? InputDate { get; set; }
+
+	/// <summary>
+	/// バリデーションエラー等の場合true
+	/// 枠や背景を赤にします
+	/// </summary>
+	[Parameter]
+	public bool IsInvalid { get; set; }
+
+	/// <summary>
+	/// 入力不可の場合true
+	/// 枠や背景をグレーにします
+	/// </summary>
+	[Parameter]
+	public bool IsDisabled { get; set; }
+
+	/// <summary>
+	/// スマホ版のガイドでtrueにする
+	/// フォーカスアウト時の背景を薄い青にする
+	/// </summary>
+	[Parameter]
+	public bool IsMobileGuide { get; set; }
+
+	/// <summary>
+	/// 高さ関係のclassをオーバーライドします
+	/// 指定しなければデフォルト値
+	/// </summary>
+	[Parameter]
+	public string? HeightClass { get; set; }
+
+	/// <summary>
+	/// 幅関係のclassをオーバーライドします
+	/// 指定しなければデフォルト値
+	/// </summary>
+	[Parameter]
+	public string? WidthClass { get; set; }
+
+	[Parameter]
+	public InputType Type { get; set; }
+
+	[Parameter(CaptureUnmatchedValues = true)]
+	public Dictionary<string, object>? Attributes { get; set; }
+
+	[Parameter]
+	public int? MaxLength { get; set; }
+
+	[Parameter]
+	public string? Placeholder { get; set; }
+
+	/// <summary>
+	/// 入力テキストを右寄せにするかどうか
+	/// </summary>
+	[Parameter]
+	public bool IsTextRight { get; set; }
+
+	/// <summary>
+	/// Enterキー入力による改行を無効にするかどうか
+	/// trueだとEnter無効 デフォルトがtrue
+	/// </summary>
+	[Parameter]
+	public bool IsInvalidEnter { get; set; } = true;
+
+	[Parameter]
+	public Dictionary<string, string>? SelectItems { get; set; }
+
+	/// <summary>
+	/// selectを選択必須にする（空の項目を表示しない）
+	/// </summary>
+	[Parameter]
+	public bool IsSelectRequired { get; set; }
+
+	[Parameter]
+	public EventCallback<string> InputValueChanged { get; set; }
+
+	[Parameter]
+	public EventCallback<DateTime?> InputDateChanged { get; set; }
+
+	/// <summary>
+	/// @oninputの代わりに使ってください
+	/// </summary>
+	[Parameter]
+	public EventCallback<ChangeEventArgs> OnInput { get; set; }
+
+	/// <summary>
+	/// @onkeydownの代わりに使ってください
+	/// </summary>
+	[Parameter]
+	public EventCallback<KeyboardEventArgs> OnKeyDown { get; set; }
+
+	/// <summary>
+	/// 派生コンポーネントでonkeydown:preventDefaultを制御する用
+	/// </summary>
+	[Parameter]
+	public bool IsOnKeyDownPreventDefault { get; set; }
+
+	/// <summary>
+	/// trueならタブキーでのフォーカス遷移をしない
+	/// </summary>
+	[Parameter]
+	public bool IsNoTabFocus { get; set; }
+
+	/// <summary>
+	/// trueなら入力不可でも高さを指定の値固定にする
+	/// </summary>
+	[Parameter]
+	public bool IsDisFixHeight { get; set; }
+
+	/// <summary>
+	/// 入力フィールドの種類
+	/// Text：input[text] Area：textarea Select：select
+	/// </summary>
+	public enum InputType
+	{
+		Text, // デフォルトで指定不要
+		Area,
+		Select,
+		Email,
+		Date
+	}
+
+	private string GetColorClass()
+	{
+		if (IsDisabled) return DisabledColorClass;
+
+		if (IsInvalid) return InvalidColorClass;
+
+		if (IsMobileGuide) return MobileGuideColorClass;
+
+		return DefaultColorClass;
+	}
+
+	private string GetTextRightClass()
+	{
+		var right = "";
+
+		if (IsTextRight) right = "text-right";
+
+		return right;
+	}
+
+	private Dictionary<string, object>? GetAdditionalAttributes()
+	{
+		var addAttributes = Attributes is null ? new Dictionary<string, object>() : Attributes;
+
+		if (MaxLength is not null) addAttributes["maxlength"] = MaxLength;
+
+		if (Placeholder is not null) addAttributes["placeholder"] = Placeholder;
+
+		if (IsDisabled) addAttributes["disabled"] = "disabled";
+
+		if (IsNoTabFocus) addAttributes["tabindex"] = "-1";
+
+		return addAttributes;
+	}
+
+	/// <summary>
+	/// 日付型のカレンダー表示
+	/// </summary>
+	private bool isOpenCalender = false;
+
+	/// <summary>
+	/// oninput発生時の処理
+	/// </summary>
+	/// <param name="e"></param>
+	/// <returns></returns>
+	private async Task OnInputHandler(ChangeEventArgs e)
+	{
+		InputValue = e.Value?.ToString();
+		await InputValueChanged.InvokeAsync(InputValue);  // 入力値の変更を親コンポーネントに通知
+		await OnInput.InvokeAsync(e);  // 親コンポーネントでoninputをハンドリングするためにコールバック
+	}
+
+	/// <summary>
+	/// oninput発生時の処理
+	/// Dateの場合に使用
+	/// </summary>
+	/// <param name="e"></param>
+	/// <returns></returns>
+	private async Task OnInputDateHandler(DateTime? date)
+	{
+		InputDate = (date?.ToString()).IsNullOrEmpty() ? null : DateTime.Parse(date.ToString()!);
+		await InputDateChanged.InvokeAsync(InputDate);  // 入力値の変更を親コンポーネントに通知
+
+		ChangeEventArgs e = new();
+		e.Value = InputDate;
+		await OnInput.InvokeAsync(e);  // 親コンポーネントでoninputをハンドリングするためにコールバック
+	}
+
+	/// <summary>
+	/// onkeydown発生時の処理
+	/// </summary>
+	/// <param name="e"></param>
+	/// <returns></returns>
+	private async Task OnKeyDownHandler(KeyboardEventArgs e)
+	{
+		await OnKeyDown.InvokeAsync(e);  // 親コンポーネントでonkeydownをハンドリングするためにコールバック
+		CancelEnterKey(e);  // IsInvalidEnterによってEnter入力の制限
+	}
+
+	private bool isOnKeyDownPreventDefaultEnter;
+	private void CancelEnterKey(KeyboardEventArgs e)
+	{
+		if (e.Key == "Enter" && IsInvalidEnter)
+		{
+			isOnKeyDownPreventDefaultEnter = true;
+		}
+		else
+		{
+			isOnKeyDownPreventDefaultEnter = false;
+		}
+	}
+
+}

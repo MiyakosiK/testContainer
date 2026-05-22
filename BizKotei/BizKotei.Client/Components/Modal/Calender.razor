@@ -1,0 +1,523 @@
+﻿@inject IJSRuntime JSRuntime
+
+@* <BizClientLib.Components.Overlay IsOpen=@IsOpen Close=@Close IsBackColorTransparent="true" /> *@
+<div class="relative min-h-0 min-w-0 @(IsOpen ? "z-[100] visible overflow-visible":"invisible overflow-hidden")">
+	<div id="@elementId" class="absolute max-h-[350px] w-80 rounded-md border border-zinc-400 bg-white p-2 shadow-lg">
+		@* 通常のカレンダー表示（日付選択） *@
+		<div class="top-full mt-1 @(calenderType == CalenderType.Day ? "grid grid-rows-[auto_auto_minmax(0,1fr)_auto]":"hidden")">
+			<div class="flex items-center justify-between">
+				<button type="button" class="ml-2 p-1 @(CheckYearInRange(CurrentMonth.AddMonths(-1)) ? "text-zinc-600 cursor-pointer" : "text-zinc-300 cursor-default")" @onclick="PrevMonth">＜</button>
+				<button type="button" class="font-semibold" @onclick="@(() => ToggleCalenderType(CalenderType.Month))">@CurrentMonth.ToString("yyyy年 M月")</button>
+				<button type="button" class="mr-2 p-1 @(CheckYearInRange(CurrentMonth.AddMonths(1)) ? "text-zinc-600 cursor-pointer" : "text-zinc-300 cursor-default")" @onclick="NextMonth">＞</button>
+			</div>
+
+			<div class="mt-0.5 grid grid-cols-7 text-center text-sm font-semibold">
+				@foreach (var day in DaysOfWeek)
+				{
+					<div class="p-1 @(day=="土" ? textColorOfSaturday : day=="日" ? textColorOfSunday : textColorOfDefault)">@day</div>
+				}
+			</div>
+
+			<div class="grid grid-cols-7 text-center">
+				@foreach (var day in Days)
+				{
+					<button type="button" class="@GetDayClass(day)" @onclick="() => SelectDate(day)">
+						@day.Day
+					</button>
+				}
+			</div>
+
+			<div class="mt-1 flex items-center justify-between">
+				<button type="button" class="ml-1 p-1 text-zinc-600" @onclick="SelectToday">今日</button>
+				<button type="button" class="mr-1 p-1 text-zinc-600" @onclick="ClearDate">クリア</button>
+			</div>
+		</div>
+
+		@* 月選択 *@
+		<div class="mt-1 h-full w-full @(calenderType == CalenderType.Month ? "grid grid-rows-[auto_minmax(0,1fr)_auto]":"hidden")">
+			<div class="flex items-center justify-between">
+				<button type="button" class="ml-2 p-1 @(CheckYearInRange(CurrentMonth.AddYears(-1)) ? "text-zinc-600 cursor-pointer" : "text-zinc-300 cursor-default")" @onclick="PrevYear">＜</button>
+				<span class="font-semibold">@CurrentMonth.ToString("yyyy年")</span>
+				<button type="button" class="mr-2 p-1 @(CheckYearInRange(CurrentMonth.AddYears(1)) ? "text-zinc-600 cursor-pointer" : "text-zinc-300 cursor-default")" @onclick="NextYear">＞</button>
+			</div>
+
+			<div class="mt-0.5 grid grid-cols-3 text-center">
+				@for (int i = 1; i <= 12; i++)
+				{
+					DateTime m = new DateTime(CurrentMonth.Year,i,1);
+					<button type="button" class="@GetMonthClass(m)" @onclick="() => SelectMonth(m)">
+						@m.ToString("M月")
+					</button>
+				}
+			</div>
+
+			<div class="mt-1 flex items-center justify-between">
+				<button type="button" class="ml-1 p-1 text-zinc-600" @onclick="SelectToday">今日</button>
+				<button type="button" class="mr-1 p-1 text-zinc-600" @onclick="ClearDate">クリア</button>
+			</div>
+		</div>
+	</div>
+</div>
+
+<script>
+	// ***カレンダー要素以外をクリックしたときに閉じるイベントリスナーを登録する関数***
+	window.registerOutsideClick = (dotNetHelper, elementId) => {
+	const handler = (event) => {
+	const popup = document.getElementById(elementId);
+	if (popup && !popup.contains(event.target)) {
+	dotNetHelper.invokeMethodAsync('CloseCalender');
+	}
+	};
+
+	// 既存のイベントリスナーを削除（重複登録を防ぐ）
+	window.removeOutsideClickListener(elementId);
+
+	// イベントリスナーを登録
+	document.addEventListener('pointerdown', handler);
+
+	// ID をキーにしてリスナーを管理
+	if (!window.outsideClickListeners) {
+	window.outsideClickListeners = {};
+	}
+	window.outsideClickListeners[elementId] = handler;
+	};
+
+	// ***登録済みのイベントリスナーを削除する関数***
+	window.removeOutsideClickListener = (elementId) => {
+	if (window.outsideClickListeners && window.outsideClickListeners[elementId]) {
+	document.removeEventListener('pointerdown', window.outsideClickListeners[elementId]);
+	delete window.outsideClickListeners[elementId];
+	}
+	};
+
+
+	// ***下方向にカレンダーを表示するスペースがあるか確認する関数***
+	window.checkSpaceBottom = async (elementId) => {
+	const margin = 2;
+
+	const element = document.getElementById(elementId);
+	const elementRect = element.getBoundingClientRect();
+	const requiredHeight = elementRect.height + margin;
+
+	const target = element.parentElement;
+
+	if (!target) return;
+
+	let parent = target.parentElement;
+
+	// 親要素をたどり、スクロール可能な要素を探す
+	while (parent) {
+	const computedStyle = window.getComputedStyle(parent);
+	if (computedStyle.overflow !== "visible") break;
+	parent = parent.parentElement;
+	}
+
+	if (!parent) return;
+
+	const targetRect = target.getBoundingClientRect();
+	const parentRect = parent.getBoundingClientRect();
+
+	// 子コンポーネントがスクロールする要素の下端を超えないかをチェック
+	const spaceBottom = parentRect.bottom - targetRect.bottom;
+
+	if (spaceBottom >= requiredHeight){
+	// 超えない場合は入力項目の下に少しだけ空けて表示
+	element.style.top = `${margin}px`;
+	}else{
+	const input = target.parentElement;	// カレンダーを呼び出す入力欄の親要素（入力欄とカレンダーのみを内包する想定）
+	const inputRect = input.getBoundingClientRect();
+
+	// 上方向に余裕があるかチェック
+	const spaceTop = inputRect.top - parentRect.top;
+	if (spaceTop >= requiredHeight){
+	// 下方向だと超える場合かつ上にスペースがある場合はカレンダーを入力項目の上に移動する
+	const destinationTop = inputRect.height + requiredHeight;
+	element.style.top = `-${destinationTop}px`;
+	}else{
+	// 上にも余裕がない場合はスクロールで隠れている領域も含めて下方向をチェック
+	const parentBottomScroll = parentRect.bottom + parent.scrollHeight - parent.scrollTop; //スクロール領域を含めた下端
+	const spaceBottomScroll = parentBottomScroll - targetRect.bottom;
+
+	if (spaceBottomScroll >= requiredHeight){
+	// 下の隠れている部分に余裕があれば下に表示
+	element.style.top = `${margin}px`;
+	}else{
+	// 最後に隠れている上方向の領域をチェック
+	const parentTopScroll = parentRect.top - parent.scrollTop ; //スクロール領域を含めた上端
+	const spaceTopScroll = inputRect.top - parentTopScroll;
+
+	if (spaceTopScroll >= requiredHeight){
+	// スクロール領域に余裕があれば上に表示
+	const destinationTop = inputRect.height + requiredHeight;
+	element.style.top = `-${destinationTop}px`;
+	}else{
+	// 上にも余裕が無ければそのまま下に表示
+	element.style.top = `${margin}px`;
+	}
+	}
+	}
+	}
+	};
+
+
+	// ***右方向にカレンダーを表示するスペースがあるかを確認する関数***
+	window.checkSpaceRight = async (elementId) => {
+
+	const element = document.getElementById(elementId);
+	const elementRect = element.getBoundingClientRect();
+	const requiredWidth = elementRect.width;
+
+	const target = element.parentElement;
+
+	if (!target) return;
+
+	let parent = target.parentElement;
+
+	// 親要素をたどり、スクロール可能な要素を探す
+	while (parent) {
+	const computedStyle = window.getComputedStyle(parent);
+	if (computedStyle.overflow !== "visible") break;
+	parent = parent.parentElement;
+	}
+
+	if (!parent) return;
+
+	const targetRect = target.getBoundingClientRect();
+	const parentRect = parent.getBoundingClientRect();
+
+	// 表示幅自体が足りていない場合は左端を合わせて表示する
+	if (parent.clientWidth < requiredWidth)
+	{
+		element.style.left = `${parentRect.left - targetRect.left}px`;
+		return;
+	}
+
+	// 子コンポーネントがスクロールする要素の下端を超えないかをチェック
+	const spaceRight = parentRect.right - targetRect.left;
+
+	if (spaceRight < requiredWidth){
+
+	// 超える場合は右端を合わせるように表示する。
+		element.style.left = `${spaceRight - requiredWidth}px`;
+		return;
+	}
+
+	};
+
+</script>
+
+@code {
+	[Parameter, EditorRequired]
+	public bool IsOpen { get; set; }
+
+	/// <summary>
+	/// バインドしたい場合はパラメータを渡すのではなく「@bind-SelectedDate="@hoge"」としてください
+	/// </summary>
+	[Parameter]
+	public DateTime? SelectedDate { get; set; }
+
+	/// <summary>
+	/// trueのときは下方向に余白が無いときにスクロールバーが出ないよう上にカレンダーを表示する。使うときはカレンダーの上（下）に表示したいコンポーネントとdivで囲んでください。
+	/// </summary>
+	[Parameter]
+	public bool IsReverseWhenNoSpace { get; set; }
+
+	[Parameter]
+	public EventCallback<DateTime?> SelectedDateChanged { get; set; }
+
+	/// <summary>
+	/// 枠外クリックで閉じるイベントコールバック
+	/// </summary>
+	[Parameter]
+	public EventCallback<bool> Close { get; set; }
+
+	private bool prevIsOpen;
+
+	private bool shouldRender;
+
+	private bool forceRender;
+
+	private string elementId = $"calender-{Guid.NewGuid()}";
+
+	protected override async Task OnParametersSetAsync()
+	{
+		// 前回値と異なる場合にのみレンダリングする
+		// ParameterにEventCallbackが存在するため、親Componentのレンダリングで毎回レンダリングされるのを防ぐため。
+		shouldRender = prevIsOpen != IsOpen || forceRender;
+
+		if (IsOpen && !prevIsOpen)
+		{
+
+			if (IsReverseWhenNoSpace)
+			{
+				// 空きスペースに応じて表示場所を変えるJavaScriptの呼び出し
+				await JSRuntime.InvokeVoidAsync("checkSpaceBottom", elementId);
+				await JSRuntime.InvokeVoidAsync("checkSpaceRight", elementId);
+			}
+
+			// 範囲外クリックで閉じるイベントリスナーを登録するJavaScriptの呼び出し
+			await JSRuntime.InvokeVoidAsync("registerOutsideClick", DotNetObjectReference.Create(this), elementId);
+
+			// 選択日付に合わせた月のカレンダーを生成
+			CurrentMonth = SelectedDate.HasValue && CheckYearInRange(SelectedDate.Value) ? SelectedDate.Value : DateTime.Today;
+			ToggleCalenderType(CalenderType.Day);
+			GenerateCalendar();
+		}
+		else if (!IsOpen && prevIsOpen)
+		{
+			// 閉じられるときにイベントリスナーの削除
+			await JSRuntime.InvokeVoidAsync("removeOutsideClickListener", elementId);
+		}
+
+		prevIsOpen = IsOpen;
+	}
+
+	protected override bool ShouldRender() => shouldRender || forceRender;
+
+	private CalenderType calenderType;
+	private enum CalenderType
+	{
+		Day,
+		Month
+	};
+
+	private DateTime CurrentMonth = DateTime.Today;
+
+	private const int MinYear = 2000;
+	private const int MaxYear = 2099;
+
+	private List<DateTime> Days = new();
+	private static readonly string[] DaysOfWeek = { "日", "月", "火", "水", "木", "金", "土" };
+
+	private string textColorOfSunday = "text-red-500";
+	private string textColorOfSaturday = "text-blue-500";
+	private string textColorOfDefault = "text-zinc-700";
+
+	/// <summary>
+	/// 指定の年が範囲内に収まっているかをチェックする
+	/// </summary>
+	/// <param name="year">対象年の数値</param>
+	/// <returns>true:範囲内, false:範囲外</returns>
+	private bool CheckYearInRange(int year)
+	{
+		if (year < MinYear || year > MaxYear) return false;
+
+		return true;
+	}
+
+	/// <summary>
+	/// 指定の年が範囲内に収まっているかをチェックする
+	/// </summary>
+	/// <param name="dateTime">対象の日付</param>
+	/// <returns>true:範囲内, false:範囲外</returns>
+	private bool CheckYearInRange(DateTime dateTime)
+	{
+		return CheckYearInRange(dateTime.Year);
+	}
+
+	/// <summary>
+	/// カレンダーを生成する
+	/// </summary>
+	private void GenerateCalendar()
+	{
+		forceRender = true;
+
+		Days.Clear();
+		DateTime firstDay = new(CurrentMonth.Year, CurrentMonth.Month, 1);
+		int startOffset = (int)firstDay.DayOfWeek;
+		DateTime startDay = firstDay.AddDays(-startOffset);
+
+		for (int i = 0; i < 42; i++)
+		{
+			Days.Add(startDay.AddDays(i));
+		}
+
+		StateHasChanged();
+
+		forceRender = false;
+	}
+
+	/// <summary>
+	/// 前月のカレンダーを表示
+	/// </summary>
+	private void PrevMonth()
+	{
+		DateTime prev = CurrentMonth.AddMonths(-1);
+
+		if (!CheckYearInRange(prev)) return;
+
+		CurrentMonth = prev;
+		GenerateCalendar();
+	}
+
+	/// <summary>
+	/// 次月のカレンダーを表示
+	/// </summary>
+	private void NextMonth()
+	{
+		DateTime next = CurrentMonth.AddMonths(1);
+
+		if (!CheckYearInRange(next)) return;
+
+		CurrentMonth = next;
+		GenerateCalendar();
+	}
+
+	/// <summary>
+	/// 日付を選択して親コンポーネントに通知
+	/// </summary>
+	/// <param name="date">選択した日付</param>
+	private void SelectDate(DateTime date)
+	{
+		if (CheckYearInRange(date))
+		{
+			SelectedDate = date;
+		}
+		else
+		{
+			// 範囲外の日付が選択された場合はなにもしない
+			return;
+		}
+
+		SelectedDateChanged.InvokeAsync(SelectedDate);
+		Close.InvokeAsync();
+
+		if (date.Month != CurrentMonth.Month)
+		{
+			CurrentMonth = date;
+			GenerateCalendar();
+		}
+	}
+
+	/// <summary>
+	/// 当日日付を選択する
+	/// </summary>
+	private void SelectToday()
+	{
+		DateTime today = DateTime.Today;
+		SelectedDate = today;
+		SelectedDateChanged.InvokeAsync(SelectedDate);
+		Close.InvokeAsync();
+
+		if (today.Month != CurrentMonth.Month)
+		{
+			CurrentMonth = today;
+			GenerateCalendar();
+		}
+	}
+
+	/// <summary>
+	/// 選択された日付をクリアする
+	/// </summary>
+	private void ClearDate()
+	{
+		SelectedDate = null;
+		SelectedDateChanged.InvokeAsync(SelectedDate);
+		Close.InvokeAsync();
+
+		CurrentMonth = DateTime.Today;
+		GenerateCalendar();
+	}
+
+	/// <summary>
+	/// 日付選択のクラス
+	/// </summary>
+	/// <param name="day"></param>
+	/// <returns></returns>
+	private string GetDayClass(DateTime day)
+	{
+		string baseClass = "m-0.5 p-1.5 transition";
+
+		if (!CheckYearInRange(day))
+			return baseClass + " text-zinc-300 cursor-default";
+
+		if (day.Month != CurrentMonth.Month)
+			return baseClass + " text-zinc-300";
+
+		if (SelectedDate.HasValue && day.Date == SelectedDate.Value.Date)
+			return baseClass + " bg-blue-500 text-white";
+
+		return day.DayOfWeek switch
+		{
+			DayOfWeek.Sunday => baseClass + $" {textColorOfSunday} hover:bg-gray-200",
+			DayOfWeek.Saturday => baseClass + $" {textColorOfSaturday} hover:bg-gray-200",
+			_ => baseClass + $" {textColorOfDefault} hover:bg-gray-200",
+		};
+	}
+
+	/// <summary>
+	/// カレンダーの日付選択と月選択を切り替える
+	/// </summary>
+	/// <param name="type"></param>
+	private void ToggleCalenderType(CalenderType type)
+	{
+		forceRender = true;
+
+		calenderType = type;
+		StateHasChanged();
+
+		forceRender = false;
+	}
+
+	/// <summary>
+	/// 前年の月を表示
+	/// </summary>
+	private void PrevYear()
+	{
+		DateTime prev = CurrentMonth.AddYears(-1);
+
+		if (!CheckYearInRange(prev)) return;
+
+		CurrentMonth = CurrentMonth.AddYears(-1);
+		GenerateCalendar();
+	}
+
+	/// <summary>
+	/// 次年の月を表示
+	/// </summary>
+	private void NextYear()
+	{
+		DateTime next = CurrentMonth.AddYears(1);
+
+		if (!CheckYearInRange(next)) return;
+
+		CurrentMonth = CurrentMonth.AddYears(1);
+		GenerateCalendar();
+	}
+
+	/// <summary>
+	/// 月を選択して日付選択表示に切り替える
+	/// </summary>
+	/// <param name="month"></param>
+	private void SelectMonth(DateTime month)
+	{
+		if (!CheckYearInRange(month)) return;
+
+		CurrentMonth = month;
+		ToggleCalenderType(CalenderType.Day);
+		GenerateCalendar();
+	}
+
+	/// <summary>
+	/// 月選択のクラス
+	/// </summary>
+	/// <param name="month"></param>
+	/// <returns></returns>
+	private string GetMonthClass(DateTime month)
+	{
+		string baseClass = "m-0.5 px-0.5 py-3 transition";
+		if (SelectedDate.HasValue && month.Year == SelectedDate.Value.Year && month.Month == SelectedDate.Value.Month)
+			return baseClass + " bg-blue-500 text-white";
+
+		return baseClass + $" {textColorOfDefault} hover:bg-gray-200";
+	}
+
+	/// <summary>
+	/// カレンダーを閉じる
+	/// </summary>
+	[JSInvokable]
+	public void CloseCalender()
+	{
+		Close.InvokeAsync();
+	}
+}

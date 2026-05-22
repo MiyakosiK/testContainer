@@ -1,0 +1,32 @@
+﻿@inject IConfiguration Configuration
+@rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
+
+<div @onclick="() => IsOpen = false" class="@(IsOpen? "block z-[90]":"hidden") bg-transparent fixed top-0 left-0 w-full h-screen" data-test-id="overlay" />
+
+<div  class="relative p-2">
+    <button data-test-id="toggle" class="flex items-center justify-center">
+        <img src="/images/help.png" class="h-6 w-6">
+    </button>
+
+    <NavigationBalloon IsOpen="@IsOpen" ItemList="@items" IsBlank="true" />
+
+</div>
+
+@code {
+    [Parameter]
+    public bool IsOpen { get; set; }
+
+    private Dictionary<string, string> items = new();
+
+
+    protected override void OnInitialized()
+    {
+        items = new()
+            {
+                {"ヘルプ", Configuration["HelpUrlPC"] is null ? "" : Configuration["HelpUrlPC"]!},
+                {"稼働状況",Configuration["StatusUrl"] is null ? "" : Configuration["StatusUrl"]!}
+            };
+    }
+
+
+}

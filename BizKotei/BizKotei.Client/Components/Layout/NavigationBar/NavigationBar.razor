@@ -1,0 +1,23 @@
+﻿@inject IJSRuntime JS
+@inject BizKotei.Client.Services.LayoutService layout
+@rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
+
+@if (layout.screenWidth == 0) { }
+else if (layout.IsMobile)
+{
+    <NavigationBarMobile />
+}
+else
+{
+    <NavigationBarPC />
+}
+
+@code
+{
+    protected override void OnInitialized()
+    {
+        layout.OnChange += StateHasChanged; // 画面サイズ取得後に再描画
+        base.OnInitialized();
+    }
+
+}

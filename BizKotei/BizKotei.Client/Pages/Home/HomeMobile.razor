@@ -1,0 +1,59 @@
+﻿@rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
+@using BizKotei.Client.Components.Modal
+@using BizShareLib.HttpComModels.DataConnectorComModel;
+@using System.ComponentModel.DataAnnotations;
+@using System.Net.Http;
+@using System.Net.Http.Json;
+@using BizKotei.Client.Services
+@using BizKotei.Client.Shared
+@using BizClientLib.Services.Interfaces
+@inject IAppRequest AppRequest
+
+@if (isInitialized)
+{
+    <div class="grid-rows-[auto_auto_1fr] grid h-full w-full bg-white">
+        @* <div class="grid h-48 grid-cols-2 grid-rows-2 gap-x-5 gap-y-4 px-5 py-3">
+            <a href="@PathInfo.Path.InputOrder" class="flex flex-col items-center justify-center rounded-md bg-blue-600">
+                <img src="/images/order_white.png" class="m-2 h-6 w-6">
+                <label class="font-biz font-semibold text-white">○○入力</label>
+            </a>
+
+            <a href="@PathInfo.Path.ListOrder" class="flex flex-col items-center justify-center rounded-md bg-orange-400">
+                <img src="/images/listorder_white.png" class="m-2 h-6 w-6">
+                <label class="font-biz font-semibold text-white">○○一覧</label>
+            </a>
+        </div> *@
+
+        <div>
+            ホーム画面
+        </div>
+    </div>
+}
+
+@code {
+    private int tabNo = 0;
+
+    // 自社ユーザー：true、外注業者ユーザー：false
+    private bool IsOwnCompany = default!;
+
+     private bool isInitialized = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Cookieにある接続情報を取得
+        var resDCForm = await AppRequest.Get<DataConnectForm>("api/DataConnector/get-cookie");
+        if (resDCForm is not null)
+        {
+            IsOwnCompany = resDCForm.IsOwnCompany ?? false;
+        }
+
+        isInitialized = true;
+        StateHasChanged();
+    }
+
+    private void ChangeTab(int selectNo)
+    {
+        tabNo = selectNo;
+    }
+
+}

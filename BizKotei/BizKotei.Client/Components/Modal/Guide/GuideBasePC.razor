@@ -1,0 +1,75 @@
+﻿<ModalBaseNoBackGround IsOpen=@IsOpen Close="@Close" ForceRender=@ForceRender Zindex=@Zindex>
+    <div class="flex @(string.IsNullOrWhiteSpace(MinWidth) ? "min-w-[600px]" : MinWidth) max-w-[80dvw] flex-col items-center justify-center">
+        @* タイトルヘッダー *@
+        <ModalTitleHeader Title="@Title" Close="@Close" />
+
+        <form class="relative flex max-h-[80dvh] w-full flex-col bg-white py-6 @($"{(IsFilter ? "pl-12 pr-36 overflow-y-auto" : "px-12")}")">
+            @if (!IsApproval && !IsYosan)
+            {
+                @* ボタン *@
+                <div class="absolute right-8 top-4 flex @(string.IsNullOrWhiteSpace(Zindex) ? "z-[100]" : Zindex)">
+                    <button type="button" class="h-8 @(IsDL ? "w-28" : "w-24") rounded-md bg-blue-700 text-left text-base text-white hover:bg-blue-600" @onclick="@(() => Search())">
+                        <div class="flex flex-row items-center justify-center">
+                            @if (IsDL)
+                            {
+                                <div class="p-1">ダウンロード</div>
+                            }
+                            else
+                            {
+                                <img src="/images/modalsearch.png" class="h-4" />
+                                <div class="p-1">検索</div>
+                            }
+                        </div>
+                    </button>
+                </div>
+            }
+            @* 検索条件などは親コンポーネントから挿入する *@
+            @ChildContent
+        </form>
+    </div>
+</ModalBaseNoBackGround>
+
+@code {
+    [Parameter, EditorRequired]
+    public bool IsOpen { get; set; }
+
+    [Parameter, EditorRequired]
+    public EventCallback<bool> Close { get; set; }
+
+    [Parameter]
+    public bool ForceRender { get; set; }
+
+    [Parameter]
+    public string? Title { get; set; }
+
+    [Parameter]
+    public Func<Task> Search { get; set; } = default!;
+
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    [Parameter]
+    public bool IsFilter { get; set; } = false;
+
+    [Parameter]
+    public bool IsApproval { get; set; } = false;
+
+    [Parameter]
+    public bool IsYosan { get; set; } = false;
+
+    [Parameter]
+    public bool IsDL { get; set; } = false;
+
+    /// <summary>
+    /// zindexの値を変えたい場合は指定(デフォルト：z-[100])
+    /// </summary>
+    [Parameter]
+    public string? Zindex { get; set; }
+
+    /// <summary>
+    /// 最小幅の値を変えたい場合は指定(デフォルト：min-w-[600px])
+    /// </summary>
+    [Parameter]
+    public string? MinWidth { get; set; }
+
+}

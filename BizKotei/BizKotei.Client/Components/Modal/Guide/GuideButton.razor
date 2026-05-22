@@ -1,0 +1,224 @@
+﻿@using BizKotei.Client.Shared
+@inject BizKotei.Client.Services.LayoutService layout
+
+@switch (Type)
+{
+
+    case ClientUtilities.TypeKb.ButtonForInput:
+        <div @onclick="OpenModal" class="@(!isEdit ? "pointer-events-none" : "") form-text @GetColorClass() w-full">
+            <span class="flex @(layout.IsMobile ? "min-h-7": "min-h-6" ) @WidthClass w-full items-center break-all">@Value</span>
+
+            @if (!Value.IsNullOrEmpty() && isEdit)
+            {
+                <div class="flex items-center justify-between">
+                    <button tabindex="@(IsNoTabFocus ? "-1":"")" type="button" @onclick="ClearValue" class="flex h-6 w-6 items-center justify-center text-xl">
+                        ×
+                    </button>
+                </div>
+            }
+        </div>
+        break;
+
+    case ClientUtilities.TypeKb.ButtonForFoward:
+        <button type="button" disabled="@(!isEdit)" @onclick="OpenModal" class="form-text h-6 w-full @GetColorClass()">
+            @Value
+            @if (!Value.IsNullOrEmpty() && isEdit)
+            {
+                <div class="grow"></div>
+                <div class="flex items-center justify-between">
+                    <button type="button" @onclick="ClearValue" class="flex h-6 items-center justify-center text-xl">
+                        ×
+                    </button>
+                </div>
+            }
+        </button>
+        <div class="grow"></div>
+        break;
+
+    case ClientUtilities.TypeKb.TextAndButton:
+        @if (IsDisabled)
+        {
+            <div type="text" class="flex @WidthClass @GetColorClass() @(layout.IsMobile ? "min-h-7": "min-h-6" ) w-full items-center rounded-none px-1">
+                <span class="w-full break-all @WidthClass">
+                    @Value
+                </span>
+            </div>
+        }
+        else
+        {
+            <div class="relative flex w-full">
+                <textarea type="text"
+                          class="flex @(layout.IsMobile ? "min-h-7": "min-h-6" ) w-full @(WidthClass) items-center rounded-none px-1 pr-8 @GetColorClass() break-all"
+                          maxlength="@MaxLength"
+                          @oninput="OnInputHandler"
+                          @bind="@Value"
+                          @onkeydown="OnKeyDownHandler"
+                          @onkeydown:preventDefault="isOnKeyDownPreventDefaultEnter" />
+
+                @if (!Value.IsNullOrEmpty() && isEdit)
+                {
+                    <button tabindex="@(IsNoTabFocus ? "-1":"")"
+                            type="button"
+                            @onclick="ClearValue"
+                            class="absolute top-1/2 right-2 -translate-y-1/2 transform bg-transparent text-xl">
+                        ×
+                    </button>
+                }
+            </div>
+        }
+        break;
+
+    case ClientUtilities.TypeKb.TextOnly:
+        @if (IsDisabled)
+        {
+            <div type="text" class="flex @WidthClass @GetColorClass() @(layout.IsMobile ? "min-h-7": "min-h-6" ) w-full items-center rounded-none px-1">
+                <span class="w-full break-all @WidthClass">
+                    @Value
+                </span>
+            </div>
+        }
+        else
+        {
+            <div class="flex w-full">
+                <textarea type="text"
+                          class="flex @(layout.IsMobile ? "min-h-7": "min-h-6" ) w-full @(WidthClass) items-center rounded-none px-1 pr-8 @GetColorClass() break-all"
+                          maxlength="@MaxLength"
+                          @oninput="OnInputHandler"
+                          @bind="@Value"
+                          @onkeydown="OnKeyDownHandler"
+                          @onkeydown:preventDefault="isOnKeyDownPreventDefaultEnter" />
+            </div>
+        }
+        break;
+
+    case ClientUtilities.TypeKb.ClearOnly:
+        @if (!Value.IsNullOrEmpty() && isEdit)
+        {
+            <div class="relative">
+                <button tabindex="@(IsNoTabFocus ? "-1":"")" type="button" @onclick="ClearValue"
+                        class="absolute top-1/2 right-2 -translate-y-1/2 transform bg-transparent text-xl">
+                    ×
+                </button>
+            </div>
+        }
+        break;
+}
+
+<button tabindex="@(IsNoTabFocus ? "-1":"")" type="button" disabled="@(!isEdit)" @onclick="OpenModal" 　class="@(layout.IsMobile ? "min-h-7": "min-h-6" ) min-w-8 @(Type != ClientUtilities.TypeKb.TextOnly ? "" : "opacity-0") @(isEdit ? "" : "opacity-0") px-2">
+    <div class="flex items-center justify-center rounded-r text-black">
+        <img src="/images/guide.png" class="h-4 w-4 transform object-contain">
+    </div>
+</button>
+
+@code {
+    [Parameter]
+    public bool IsOpen { get; set; } = default!;
+    [Parameter]
+    public EventCallback Close { get; set; } = default!;
+    [Parameter]
+    public string? Value { get; set; } = default!;
+    [Parameter]
+    public EventCallback OnOpen { get; set; } = default!;
+    [Parameter]
+    public bool isEdit { get; set; } = default!;
+    [Parameter]
+    public bool IsInvalid { get; set; }
+    [Parameter]
+    public bool IsDisabled { get; set; }
+    [Parameter]
+    public EventCallback OnClear { get; set; }
+    [Parameter]
+    public string? WidthClass { get; set; }
+    [Parameter]
+    public bool IsNoTabFocus { get; set; }
+    [Parameter]
+    public int? MaxLength { get; set; }
+    [Parameter]
+    public EventCallback<string> ValueChanged { get; set; }
+    [Parameter]
+    public EventCallback<ChangeEventArgs> OnInput { get; set; }
+    [Parameter]
+    public ClientUtilities.TypeKb Type { get; set; }
+    [Parameter]
+    public EventCallback<KeyboardEventArgs> OnKeyDown { get; set; }
+    [Parameter]
+    public EventCallback<bool> OpenGuideOnYosanChanged { get; set; }
+
+    private bool isClearAction = false;
+
+    private const string DefaultColorClass = "border border-zinc-400 bg-white transition-colors focus:bg-yellow-100 focus:border-sky-300 focus:outline-hidden";
+    private const string InvalidColorClass = "border border-red-600 bg-red-100 focus:outline-hidden";
+    private const string DisabledColorClass = "border border-zinc-400 bg-zinc-200 focus:outline-hidden";
+
+    /// <summary>
+    /// oninput発生時の処理
+    /// </summary>
+    /// <param name="e"></param>
+    /// <returns></returns>
+    private async Task OnInputHandler(ChangeEventArgs e)
+    {
+        Value = e.Value?.ToString();
+        await ValueChanged.InvokeAsync(Value);  // 入力値の変更を親コンポーネントに通知
+        await OnInput.InvokeAsync(e);  // 親コンポーネントでoninputをハンドリングするためにコールバック
+    }
+
+    /// <summary>
+    /// onkeydown発生時の処理
+    /// </summary>
+    /// <param name="e"></param>
+    /// <returns></returns>
+    private void OnKeyDownHandler(KeyboardEventArgs e)
+    {
+        CancelEnterKey(e);  // IsInvalidEnterによってEnter入力の制限
+    }
+
+    private bool isOnKeyDownPreventDefaultEnter;
+    private void CancelEnterKey(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            isOnKeyDownPreventDefaultEnter = true;
+        }
+        else
+        {
+            isOnKeyDownPreventDefaultEnter = false;
+        }
+    }
+
+    private void OpenModal()
+    {
+        if (isClearAction)
+        {
+            isClearAction = false; // リセット
+            if (Type == ClientUtilities.TypeKb.ButtonForInput || Type == ClientUtilities.TypeKb.ButtonForFoward)
+            {
+                return;
+            }
+        }
+
+        if (OnOpen.HasDelegate)
+        {
+            OnOpen.InvokeAsync(null);
+        }
+
+        if (OpenGuideOnYosanChanged.HasDelegate)
+        {
+            OpenGuideOnYosanChanged.InvokeAsync(true);
+        }
+    }
+
+    private string GetColorClass()
+    {
+        if (IsDisabled) return DisabledColorClass;
+
+        if (IsInvalid) return InvalidColorClass;
+
+        return DefaultColorClass;
+    }
+
+    private async Task ClearValue()
+    {
+        isClearAction = true;
+        await OnClear.InvokeAsync();
+    }
+}
