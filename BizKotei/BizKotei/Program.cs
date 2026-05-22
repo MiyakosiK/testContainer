@@ -64,7 +64,7 @@ logger.LogInformation("AWS Profile:{pro}", awsOptions.Profile);
 logger.LogInformation("AWS Region:{reg}", awsOptions.Region?.DisplayName);
 #if !DEBUG
     // �V�[�N���b�g�ނ�SSM����擾��Configuration���č\�z
-    config = builder.Configuration.AddSystemsManager("/biz-order/").Build();  //Biz���i�ɂ���ĕύX
+    config = builder.Configuration.AddSystemsManager("/biz-kotei/").Build();  //Biz���i�ɂ���ĕύX
 #endif
 //Cognito�̔F�؃v���o�C�_���������i���󃍃O�A�E�g�ɂ̂ݎg�p
 services.AddCognitoIdentity();
